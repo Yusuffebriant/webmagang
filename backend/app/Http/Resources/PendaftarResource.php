@@ -1,0 +1,39 @@
+<?php
+
+namespace App\Http\Resources;
+
+use Illuminate\Http\Request;
+use Illuminate\Http\Resources\Json\JsonResource;
+
+class PendaftarResource extends JsonResource
+{
+    public function toArray(Request $request): array
+    {
+        return [
+            'id'                => $this->id,
+            'nomor_pendaftaran' => $this->nomor_pendaftaran,
+            'nama_lengkap'      => $this->nama_lengkap,
+            'nim'               => $this->nim,
+            'nik'               => $this->nik,
+            'tempat_lahir'      => $this->tempat_lahir,
+            'tanggal_lahir'     => $this->tanggal_lahir?->format('Y-m-d'),
+            'jenis_kelamin'     => $this->jenis_kelamin,
+            'alamat'            => $this->alamat,
+            'no_whatsapp'       => $this->no_whatsapp,
+            'email'             => $this->email,
+            'universitas'       => $this->universitas,
+            'fakultas'          => $this->fakultas,
+            'program_studi'     => $this->program_studi,
+            'semester'          => $this->semester,
+            'program'           => $this->whenLoaded('program', fn () => $this->program->nama_program),
+            'bidang'            => $this->whenLoaded('bidang', fn () => $this->bidang->nama_bidang),
+            'periode_mulai'     => $this->periode_mulai?->format('Y-m-d'),
+            'periode_selesai'   => $this->periode_selesai?->format('Y-m-d'),
+            'status'            => $this->status->value,
+            'status_label'      => $this->status->label(),
+            'catatan'           => $this->catatan,
+            'dokumen'           => DokumenPendaftarResource::collection($this->whenLoaded('dokumen')),
+            'created_at'        => $this->created_at?->format('Y-m-d H:i'),
+        ];
+    }
+}
