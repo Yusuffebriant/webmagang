@@ -8,7 +8,15 @@ import SafeImage from '../../components/SafeImage'
 const FOTO_GEDUNG = '/images/gedung-bkpsdm.jpg'
 const FOTO_LAPTOP = '/images/laptop.jpg'
 
-const BIDANG_DEFAULT = ['Teknologi Informasi', 'Administrasi', 'Kepegawaian', 'Keuangan', 'Pelayanan']
+const BIDANG_DEFAULT = [
+  'Pendamping Teknis Pranata Komputer',
+  'Pendamping Pengelola Keuangan & Administrasi',
+  'Pendamping Teknis Pengelola Arsip',
+  'Programer Teknologi Informasi Data Pegawai',
+  'Pendamping Komunikasi Publik, Website & Media Sosial',
+  'Pendamping Psikologi Uji Kompetensi & Potensi',
+  'Pendamping Pengelola Talent Pool & Kediklatan',
+]
 
 const tentangMenu = [
   { icon: 'target', title: 'Visi & Misi', desc: 'Tujuan dan arah kami' },
@@ -174,7 +182,7 @@ export default function Beranda() {
               </span>
               <p className="text-[13px] font-semibold text-brand-900">Bidang yang Tersedia</p>
               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-xs text-slate-500 marker:text-brand-500">
-                {daftarBidang.slice(0, 5).map((b) => <li key={b}>{b}</li>)}
+                {daftarBidang.map((b) => <li key={b}>{b}</li>)}
                 <li>Bidang lainnya</li>
               </ul>
             </div>
