@@ -21,7 +21,7 @@ export default function Navbar() {
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
       <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between gap-6 px-6">
-        <Link to="/" aria-label="Beranda BKPSDM"><Logo /></Link>
+        <Logo />
 
         <nav className="hidden h-full items-center gap-8 md:flex" aria-label="Menu utama">
           {navLinks.map((l) =>
