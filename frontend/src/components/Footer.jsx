@@ -4,9 +4,9 @@ import Icon from './Icon'
 import { navLinks } from './Navbar'
 
 const socials = [
-  { name: 'instagram', label: 'Instagram', href: '#' },
-  { name: 'youtube', label: 'YouTube', href: '#' },
-  { name: 'globe', label: 'Website', href: '#' },
+  { name: 'instagram', label: 'Instagram', href: 'https://www.instagram.com/bkpsdmkotayk/' },
+  { name: 'youtube', label: 'YouTube', href: 'https://www.youtube.com/@bkpsdmkotajogja9527' },
+  { name: 'globe', label: 'Website', href: 'https://bkpsdm.jogjakota.go.id/' },
 ]
 
 export default function Footer() {
@@ -26,7 +26,7 @@ export default function Footer() {
           </nav>
           <div className="flex gap-3">
             {socials.map((s) => (
-              <a key={s.name} href={s.href} aria-label={s.label}
+              <a key={s.name} href={s.href} aria-label={s.label} target="_blank" rel="noopener noreferrer"
                 className="flex h-7 w-7 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-brand-500">
                 <Icon name={s.name} className="h-3.5 w-3.5" />
               </a>
