@@ -4,7 +4,11 @@ import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
 
-const JENJANG = ['D3', 'D4', 'S1', 'S2']
+// true  = cocokkan dengan backend LAMA (butuh NIK, semester, program, 1 formasi, dokumen[]).
+// false = setelah backend diperbarui sesuai formulir baru -> NIK & semester tidak ditampilkan lagi.
+const BACKEND_LAMA = true
+
+const JENJANG = ['SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2']
 const HARI_INI = new Date().toISOString().slice(0, 10)
 const MAKS_UKURAN = 2 * 1024 * 1024 // 2MB, sama dengan validasi backend
 
@@ -18,19 +22,57 @@ const DOKUMEN = [
 const MAKS_ANGGOTA = 9 // anggota di luar ketua
 
 const anggotaKosong = () => ({
-  nama_lengkap: '', nim: '', universitas: '', fakultas: '', program_studi: '', jenjang: '',
+  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '', jenjang: '',
   tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '', alamat: '', no_whatsapp: '', email: '',
 })
 
 const awal = {
-  nama_lengkap: '', nim: '', universitas: '', fakultas: '', program_studi: '',
+  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '',
   jenjang: '', tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '',
   alamat: '', no_whatsapp: '', email: '',
   periode_mulai: '', periode_selesai: '', durasi: '', durasi_satuan: 'bulan',
 }
 
+const LABEL = {
+  nama_lengkap: 'Nama Lengkap', nim: 'NIM', universitas: 'Universitas', fakultas: 'Fakultas',
+  program_studi: 'Program Studi', jenjang: 'Jenjang Pendidikan', tempat_lahir: 'Tempat Lahir',
+  tanggal_lahir: 'Tanggal Lahir', jenis_kelamin: 'Jenis Kelamin', alamat: 'Alamat Domisili',
+  no_whatsapp: 'Nomor HP', email: 'Email', periode_mulai: 'Periode Magang Mulai',
+  periode_selesai: 'Periode Magang Selesai', durasi: 'Durasi Magang', durasi_satuan: 'Satuan Durasi',
+  bidang: 'Minat Formasi Magang', surat_pengantar: 'Surat Pengantar', cv: 'CV',
+  transkrip: 'Transkrip / KHS', rencana_kegiatan: 'Rencana Kegiatan', pernyataan: 'Pernyataan',
+  anggota: 'Anggota Kelompok', nik: 'NIK', semester: 'Semester', program_magang_id: 'Program Magang',
+}
+
+// Pesan bawaan Laravel berbahasa Inggris dibuat lebih jelas.
+const terjemah = (m) => {
+  if (!m) return m
+  if (/required/i.test(m)) return 'wajib diisi.'
+  if (/valid email/i.test(m)) return 'format email tidak valid.'
+  if (/greater than|may not be/i.test(m)) return 'terlalu panjang atau terlalu besar.'
+  if (/valid date/i.test(m)) return 'tanggal tidak valid.'
+  return m
+}
+
+// Ubah objek error menjadi daftar "kolom mana yang salah".
+function daftarMasalah(errors) {
+  const hasil = []
+  const ada = new Set()
+  Object.entries(errors).forEach(([key, msgs]) => {
+    if (!msgs?.length || key.startsWith('bidang_magang_ids') || key === 'bidang_lainnya' || key === 'bidang_magang_id' || key.startsWith('dokumen')) return
+    const m = key.match(/^anggota\.(\d+)\.(.+)$/)
+    const item = m
+      ? { anchor: `anggota_${m[1]}_${m[2]}`, label: `Anggota ${Number(m[1]) + 1} – ${LABEL[m[2]] ?? m[2]}` }
+      : { anchor: key, label: LABEL[key] ?? key }
+    if (ada.has(item.anchor)) return
+    ada.add(item.anchor)
+    hasil.push({ ...item, pesan: terjemah(msgs[0]) })
+  })
+  return hasil
+}
+
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10'
+  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-xs placeholder:text-slate-400/60 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10'
 
 function Section({ judul, icon, children }) {
   return (
@@ -46,9 +88,9 @@ function Section({ judul, icon, children }) {
   )
 }
 
-function Field({ label, error, hint, required = true, children, htmlFor }) {
+function Field({ label, error, hint, required = true, children, htmlFor, anchor }) {
   return (
-    <div data-error={error ? 'true' : undefined}>
+    <div id={`fld-${anchor ?? htmlFor}`} data-error={error ? 'true' : undefined}>
       <label htmlFor={htmlFor} className="mb-2 block text-[13px] font-semibold text-slate-700">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
@@ -56,6 +98,42 @@ function Field({ label, error, hint, required = true, children, htmlFor }) {
       {hint && !error && <p className="mt-1 text-xs text-slate-500">{hint}</p>}
       {error && <p className="mt-1 text-xs text-red-600">{error}</p>}
     </div>
+  )
+}
+
+// Jenjang (dropdown) + kolom institusi yang menyesuaikan:
+// SMA/SMK -> Nama Sekolah & Jurusan; selain itu -> Universitas, Fakultas, Program Studi.
+function PendidikanFields({ data, ubah, idp, err }) {
+  const sekolah = data.jenjang === 'SMA/SMK'
+  const contoh = sekolah
+    ? { universitas: 'Contoh: SMK Negeri 2 Yogyakarta', program_studi: 'Contoh: Teknik Komputer dan Jaringan' }
+    : { universitas: 'Contoh: Universitas Duta Bangsa Surakarta', fakultas: 'Contoh: Teknik', program_studi: 'Contoh: Teknik Informatika' }
+  const teks = (f) => (
+    <input id={`${idp}${f}`} placeholder={contoh[f]} className={inputCls} value={data[f]} onChange={(e) => ubah(f, e.target.value)} required maxLength={150} />
+  )
+
+  return (
+    <>
+      <Field label="Jenjang Pendidikan" htmlFor={`${idp}jenjang`} error={err('jenjang')}>
+        <select id={`${idp}jenjang`} className={inputCls} value={data.jenjang} onChange={(e) => ubah('jenjang', e.target.value)} required>
+          <option value="">Pilih jenjang pendidikan</option>
+          {JENJANG.map((j) => <option key={j} value={j}>{j}</option>)}
+        </select>
+      </Field>
+
+      {data.jenjang && (sekolah ? (
+        <div className="grid gap-4 sm:grid-cols-2">
+          <Field label="Nama Sekolah" htmlFor={`${idp}universitas`} error={err('universitas')}>{teks('universitas')}</Field>
+          <Field label="Jurusan" htmlFor={`${idp}program_studi`} error={err('program_studi')}>{teks('program_studi')}</Field>
+        </div>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-3">
+          <Field label="Universitas" htmlFor={`${idp}universitas`} error={err('universitas')}>{teks('universitas')}</Field>
+          <Field label="Fakultas" htmlFor={`${idp}fakultas`} error={err('fakultas')}>{teks('fakultas')}</Field>
+          <Field label="Program Studi" htmlFor={`${idp}program_studi`} error={err('program_studi')}>{teks('program_studi')}</Field>
+        </div>
+      ))}
+    </>
   )
 }
 
@@ -85,46 +163,39 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
       <div className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nama Lengkap" htmlFor={id('nama_lengkap')} error={k('nama_lengkap')}>
-            <input id={id('nama_lengkap')} className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
+            <input id={id('nama_lengkap')} placeholder="Contoh: Rina Wulandari" className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
           </Field>
           <Field label="NIM" htmlFor={id('nim')} error={k('nim')}>
-            <input id={id('nim')} className={inputCls} value={data.nim} onChange={set('nim')} required maxLength={30} />
+            <input id={id('nim')} placeholder="Contoh: 21051235" className={inputCls} value={data.nim} onChange={set('nim')} required maxLength={30} />
           </Field>
         </div>
 
-        <div className="grid gap-4 sm:grid-cols-3">
-          <Field label="Universitas" htmlFor={id('universitas')} error={k('universitas')}>
-            <input id={id('universitas')} className={inputCls} value={data.universitas} onChange={set('universitas')} required maxLength={150} />
-          </Field>
-          <Field label="Fakultas" htmlFor={id('fakultas')} error={k('fakultas')}>
-            <input id={id('fakultas')} className={inputCls} value={data.fakultas} onChange={set('fakultas')} required maxLength={150} />
-          </Field>
-          <Field label="Program Studi" htmlFor={id('program_studi')} error={k('program_studi')}>
-            <input id={id('program_studi')} className={inputCls} value={data.program_studi} onChange={set('program_studi')} required maxLength={150} />
-          </Field>
-        </div>
-
-        <Field label="Jenjang Pendidikan" error={k('jenjang')}>
-          <div className="flex flex-wrap gap-3">
-            {JENJANG.map((j) => (
-              <label key={j} className={pill(data.jenjang === j)}>
-                <input type="radio" name={`jenjang_${i}`} value={j} checked={data.jenjang === j} onChange={set('jenjang')} className="accent-brand-500" />
-                {j}
-              </label>
-            ))}
+        {BACKEND_LAMA && (
+          <div className="grid gap-4 sm:grid-cols-2">
+            <Field label="NIK" htmlFor={id('nik')} error={k('nik')} hint="16 digit angka sesuai KTP">
+              <input id={id('nik')} placeholder="Contoh: 3404012345670002" inputMode="numeric" pattern="[0-9]{16}" maxLength={16} className={inputCls} value={data.nik} onChange={(e) => ubah(i, 'nik', e.target.value.replace(/\D/g, ''))} required title="NIK terdiri dari 16 digit angka" />
+            </Field>
+            <Field label="Semester" htmlFor={id('semester')} error={k('semester')} hint="Ketik angka atau pilih dari daftar (1 sampai 14)">
+              <input id={id('semester')} list={`daftar-semester-${i}`} placeholder="Ketik atau pilih, contoh: 6" inputMode="numeric" maxLength={2} pattern="([1-9]|1[0-4])" title="Semester berupa angka 1 sampai 14" className={inputCls} value={data.semester} onChange={(e) => ubah(i, 'semester', e.target.value.replace(/\D/g, ''))} required />
+              <datalist id={`daftar-semester-${i}`}>
+                {Array.from({ length: 14 }, (_, n) => n + 1).map((n) => <option key={n} value={n} />)}
+              </datalist>
+            </Field>
           </div>
-        </Field>
+        )}
+
+        <PendidikanFields data={data} ubah={(f, v) => ubah(i, f, v)} idp={`anggota_${i}_`} err={k} />
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Tempat Lahir" htmlFor={id('tempat_lahir')} error={k('tempat_lahir')}>
-            <input id={id('tempat_lahir')} className={inputCls} value={data.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
+            <input id={id('tempat_lahir')} placeholder="Contoh: Sleman" className={inputCls} value={data.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
           </Field>
-          <Field label="Tanggal Lahir" htmlFor={id('tanggal_lahir')} error={k('tanggal_lahir')}>
+          <Field label="Tanggal Lahir" htmlFor={id('tanggal_lahir')} error={k('tanggal_lahir')} hint="Pilih dari kalender. Contoh: 15 Mei 2003">
             <input id={id('tanggal_lahir')} type="date" className={inputCls} value={data.tanggal_lahir} onChange={set('tanggal_lahir')} required max={HARI_INI} />
           </Field>
         </div>
 
-        <Field label="Jenis Kelamin" error={k('jenis_kelamin')}>
+        <Field label="Jenis Kelamin" anchor={id('jenis_kelamin')} error={k('jenis_kelamin')}>
           <div className="flex gap-3">
             {[['L', 'Laki-laki'], ['P', 'Perempuan']].map(([v, l]) => (
               <label key={v} className={pill(data.jenis_kelamin === v)}>
@@ -136,15 +207,15 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
         </Field>
 
         <Field label="Alamat Domisili" htmlFor={id('alamat')} error={k('alamat')}>
-          <textarea id={id('alamat')} rows={2} className={inputCls} value={data.alamat} onChange={set('alamat')} required maxLength={500} />
+          <textarea id={id('alamat')} placeholder="Contoh: Jl. Melati No. 5, Kel. Caturtunggal, Kec. Depok, Kab. Sleman" rows={2} className={inputCls} value={data.alamat} onChange={set('alamat')} required maxLength={500} />
         </Field>
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nomor HP (aktif & WhatsApp)" htmlFor={id('no_whatsapp')} error={k('no_whatsapp')}>
-            <input id={id('no_whatsapp')} type="tel" inputMode="tel" className={inputCls} value={data.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="08xxxxxxxxxx" />
+            <input id={id('no_whatsapp')} type="tel" inputMode="tel" className={inputCls} value={data.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
           </Field>
           <Field label="Email" htmlFor={id('email')} error={k('email')}>
-            <input id={id('email')} type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
+            <input id={id('email')} placeholder="Contoh: rina.wulandari@email.com" type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
           </Field>
         </div>
       </div>
@@ -162,12 +233,12 @@ export default function Pendaftaran() {
   const [lainnyaTeks, setLainnyaTeks] = useState('')
   const [files, setFiles] = useState({})
   const [setuju, setSetuju] = useState(false)
-  const [tipe, setTipe] = useState('individu')
   const [anggota, setAnggota] = useState([])
   const [errors, setErrors] = useState({})
   const [pesan, setPesan] = useState('')
   const [kirim, setKirim] = useState(false)
   const [hasil, setHasil] = useState(null)
+  const [programId, setProgramId] = useState(null)
   const formRef = useRef(null)
 
   const muatFormasi = () => {
@@ -181,14 +252,20 @@ export default function Pendaftaran() {
 
   useEffect(() => {
     muatFormasi()
+    if (BACKEND_LAMA) {
+      api.get('/public/program').then((r) => setProgramId(r.data[0]?.id ?? null)).catch(() => {})
+    }
   }, [])
 
-  const err = (k) => errors[k]?.[0]
+  const err = (k) => terjemah(errors[k]?.[0])
+  const masalah = daftarMasalah(errors)
 
-  const pilihTipe = (t) => {
-    setTipe(t)
-    if (t === 'kelompok' && anggota.length === 0) setAnggota([anggotaKosong()])
+  const lompat = (anchor) => {
+    const el = document.getElementById(`fld-${anchor}`)
+    el?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+    el?.querySelector('input, textarea, select')?.focus({ preventScroll: true })
   }
+
   const ubahAnggota = (i, f, v) => setAnggota((arr) => arr.map((a, n) => (n === i ? { ...a, [f]: v } : a)))
   const tambahAnggota = () => setAnggota((arr) => (arr.length < MAKS_ANGGOTA ? [...arr, anggotaKosong()] : arr))
   const hapusAnggota = (i) => setAnggota((arr) => arr.filter((_, n) => n !== i))
@@ -214,7 +291,7 @@ export default function Pendaftaran() {
 
   const scrollKeError = () => {
     setTimeout(() => {
-      formRef.current?.querySelector('[data-error="true"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+      formRef.current?.querySelector('[role="alert"]')?.scrollIntoView({ behavior: 'smooth', block: 'center' })
     }, 50)
   }
 
@@ -230,30 +307,49 @@ export default function Pendaftaran() {
     if (!files.surat_pengantar) lokal.surat_pengantar = ['Surat pengantar dari universitas wajib diunggah.']
     if (!form.jenjang) lokal.jenjang = ['Pilih jenjang pendidikan.']
     if (!form.jenis_kelamin) lokal.jenis_kelamin = ['Pilih jenis kelamin.']
+    if (BACKEND_LAMA && !bidangIds.length) lokal.bidang = ['Pilih minimal 1 formasi dari daftar (pilihan "Lainnya" saja belum bisa diproses).']
     if (!setuju) lokal.pernyataan = ['Anda harus menyetujui pernyataan.']
-    if (tipe === 'kelompok') {
-      if (anggota.length < 1) lokal.anggota = ['Tambahkan minimal 1 anggota kelompok.']
-      anggota.forEach((a, i) => {
-        if (!a.jenjang) lokal[`anggota.${i}.jenjang`] = ['Pilih jenjang pendidikan.']
-        if (!a.jenis_kelamin) lokal[`anggota.${i}.jenis_kelamin`] = ['Pilih jenis kelamin.']
-      })
-    }
+    anggota.forEach((a, i) => {
+      if (!a.jenjang) lokal[`anggota.${i}.jenjang`] = ['Pilih jenjang pendidikan.']
+      if (!a.jenis_kelamin) lokal[`anggota.${i}.jenis_kelamin`] = ['Pilih jenis kelamin.']
+    })
     if (Object.keys(lokal).length) {
       setErrors(lokal)
       scrollKeError()
       return
     }
 
+    if (BACKEND_LAMA && !programId) {
+      setPesan('Program magang belum tersedia atau gagal dimuat. Muat ulang halaman, atau hubungi admin.')
+      scrollKeError()
+      return
+    }
+
     const fd = new FormData()
+    const urutanDokumen = []
     Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+    if (form.jenjang === 'SMA/SMK') fd.set('fakultas', '-') // tidak dipakai untuk sekolah
     bidangIds.forEach((id) => fd.append('bidang_magang_ids[]', id))
     if (lainnya && lainnyaTeks.trim()) fd.append('bidang_lainnya', lainnyaTeks.trim())
     DOKUMEN.forEach(({ key }) => { if (files[key]) fd.append(key, files[key]) })
     fd.append('pernyataan', '1')
-    fd.append('tipe_pendaftaran', tipe)
-    if (tipe === 'kelompok') {
-      anggota.forEach((a, i) => Object.entries(a).forEach(([k, v]) => fd.append(`anggota[${i}][${k}]`, v)))
+    if (BACKEND_LAMA) {
+      fd.append('program_magang_id', programId)
+      fd.append('bidang_magang_id', bidangIds[0])
+      DOKUMEN.forEach(({ key }) => {
+        if (!files[key]) return
+        const n = urutanDokumen.length
+        fd.append(`dokumen[${n}][jenis_dokumen]`, key)
+        fd.append(`dokumen[${n}][file]`, files[key])
+        urutanDokumen.push(key)
+      })
     }
+    // Tanpa anggota = mendaftar sendiri (individu); ada anggota = kelompok.
+    fd.append('tipe_pendaftaran', anggota.length > 0 ? 'kelompok' : 'individu')
+    anggota.forEach((a, i) => {
+      Object.entries(a).forEach(([k, v]) => fd.append(`anggota[${i}][${k}]`, v))
+      if (a.jenjang === 'SMA/SMK') fd.set(`anggota[${i}][fakultas]`, '-')
+    })
 
     setKirim(true)
     setErrors({})
@@ -266,9 +362,12 @@ export default function Pendaftaran() {
       if (res?.status === 422) {
         const e422 = res.data.errors ?? {}
         // gabungkan error formasi (bidang_magang_ids / bidang_lainnya) ke satu kunci
-        e422.bidang = e422.bidang_magang_ids ?? e422.bidang_lainnya
+        e422.bidang = e422.bidang_magang_ids ?? e422.bidang_lainnya ?? e422.bidang_magang_id
+        Object.keys(e422).forEach((k) => {
+          const m = k.match(/^dokumen\.(\d+)\.file$/)
+          if (m && urutanDokumen[m[1]]) e422[urutanDokumen[m[1]]] = e422[k]
+        })
         setErrors(e422)
-        setPesan('Beberapa isian belum benar. Periksa kolom yang ditandai merah.')
         scrollKeError()
       } else if (res?.status === 429) {
         setPesan('Terlalu banyak percobaan. Silakan coba lagi beberapa saat lagi.')
@@ -321,73 +420,60 @@ export default function Pendaftaran() {
 
       <div className="mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
-          {pesan && (
-            <div role="alert" className="rounded-lg border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">{pesan}</div>
+          {(masalah.length > 0 || pesan) && (
+            <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
+              {masalah.length > 0 && (
+                <>
+                  <p className="font-semibold">Pendaftaran belum bisa dikirim. Periksa {masalah.length} isian berikut:</p>
+                  <ul className="mt-2 space-y-1">
+                    {masalah.map((m) => (
+                      <li key={m.anchor}>
+                        <button type="button" onClick={() => lompat(m.anchor)} className="text-left hover:underline">
+                          <span className="font-semibold">{m.label}</span>: {m.pesan}
+                        </button>
+                      </li>
+                    ))}
+                  </ul>
+                </>
+              )}
+              {pesan && <p className={masalah.length > 0 ? 'mt-3' : ''}>{pesan}</p>}
+            </div>
           )}
 
-          {/* JENIS PENDAFTARAN */}
-          <Section judul="Jenis Pendaftaran" icon="users">
-            <div className="grid gap-3 sm:grid-cols-2" role="radiogroup" aria-label="Jenis pendaftaran">
-              {[
-                ['individu', 'Individu', 'Mendaftar sendiri.', 'user'],
-                ['kelompok', 'Kelompok', 'Mendaftar bersama beberapa teman.', 'users'],
-              ].map(([v, judul, desc, ikon]) => (
-                <label key={v} className={`flex cursor-pointer items-start gap-3 rounded-xl border p-4 transition ${tipe === v ? 'border-brand-500 bg-brand-50 ring-2 ring-brand-500/15' : 'border-slate-300 hover:border-brand-200'}`}>
-                  <input type="radio" name="tipe" value={v} checked={tipe === v} onChange={() => pilihTipe(v)} className="sr-only" />
-                  <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg ${tipe === v ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-500'}`}>
-                    <Icon name={ikon} className="h-5 w-5" />
-                  </span>
-                  <span>
-                    <span className="block text-sm font-bold text-brand-900">{judul}</span>
-                    <span className="block text-xs text-slate-500">{desc}</span>
-                  </span>
-                </label>
-              ))}
-            </div>
-          </Section>
-
           {/* DATA PRIBADI */}
-          <Section judul={tipe === 'kelompok' ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user">
+          <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user">
             <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
-              <input id="nama_lengkap" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
+              <input id="nama_lengkap" placeholder="Contoh: Budi Santoso" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
             <Field label="NIM" htmlFor="nim" error={err('nim')}>
-              <input id="nim" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
+              <input id="nim" placeholder="Contoh: 21051234" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
             </Field>
-
-            <div className="grid gap-5 sm:grid-cols-3">
-              <Field label="Universitas" htmlFor="universitas" error={err('universitas')}>
-                <input id="universitas" className={inputCls} value={form.universitas} onChange={set('universitas')} required maxLength={150} />
-              </Field>
-              <Field label="Fakultas" htmlFor="fakultas" error={err('fakultas')}>
-                <input id="fakultas" className={inputCls} value={form.fakultas} onChange={set('fakultas')} required maxLength={150} />
-              </Field>
-              <Field label="Program Studi" htmlFor="program_studi" error={err('program_studi')}>
-                <input id="program_studi" className={inputCls} value={form.program_studi} onChange={set('program_studi')} required maxLength={150} />
-              </Field>
-            </div>
-
-            <Field label="Jenjang Pendidikan" error={err('jenjang')}>
-              <div className="flex flex-wrap gap-3">
-                {JENJANG.map((j) => (
-                  <label key={j} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${form.jenjang === j ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-slate-300 text-slate-700 hover:border-brand-200'}`}>
-                    <input type="radio" name="jenjang" value={j} checked={form.jenjang === j} onChange={set('jenjang')} className="accent-brand-500" />
-                    {j}
-                  </label>
-                ))}
+            {BACKEND_LAMA && (
+              <div className="grid gap-5 sm:grid-cols-2">
+                <Field label="NIK" htmlFor="nik" error={err('nik')} hint="16 digit angka sesuai KTP">
+                  <input id="nik" placeholder="Contoh: 3404012345670001" inputMode="numeric" pattern="[0-9]{16}" maxLength={16} className={inputCls} value={form.nik} onChange={(e) => setForm((f) => ({ ...f, nik: e.target.value.replace(/\D/g, '') }))} required title="NIK terdiri dari 16 digit angka" />
+                </Field>
+                <Field label="Semester" htmlFor="semester" error={err('semester')} hint="Ketik angka atau pilih dari daftar (1 sampai 14)">
+                  <input id="semester" list="daftar-semester" placeholder="Ketik atau pilih, contoh: 6" inputMode="numeric" maxLength={2} pattern="([1-9]|1[0-4])" title="Semester berupa angka 1 sampai 14" className={inputCls} value={form.semester} onChange={(e) => setForm((f) => ({ ...f, semester: e.target.value.replace(/\D/g, '') }))} required />
+                  <datalist id="daftar-semester">
+                    {Array.from({ length: 14 }, (_, n) => n + 1).map((n) => <option key={n} value={n} />)}
+                  </datalist>
+                </Field>
               </div>
-            </Field>
+            )}
+
+            <PendidikanFields data={form} ubah={(f, v) => setForm((x) => ({ ...x, [f]: v }))} idp="" err={err} />
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Tempat Lahir" htmlFor="tempat_lahir" error={err('tempat_lahir')}>
-                <input id="tempat_lahir" className={inputCls} value={form.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
+                <input id="tempat_lahir" placeholder="Contoh: Yogyakarta" className={inputCls} value={form.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
               </Field>
-              <Field label="Tanggal Lahir" htmlFor="tanggal_lahir" error={err('tanggal_lahir')}>
+              <Field label="Tanggal Lahir" htmlFor="tanggal_lahir" error={err('tanggal_lahir')} hint="Pilih dari kalender. Contoh: 15 Mei 2003">
                 <input id="tanggal_lahir" type="date" className={inputCls} value={form.tanggal_lahir} onChange={set('tanggal_lahir')} required max={HARI_INI} />
               </Field>
             </div>
 
-            <Field label="Jenis Kelamin" error={err('jenis_kelamin')}>
+            <Field label="Jenis Kelamin" anchor="jenis_kelamin" error={err('jenis_kelamin')}>
               <div className="flex gap-3">
                 {[['L', 'Laki-laki'], ['P', 'Perempuan']].map(([v, l]) => (
                   <label key={v} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${form.jenis_kelamin === v ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-slate-300 text-slate-700 hover:border-brand-200'}`}>
@@ -399,51 +485,51 @@ export default function Pendaftaran() {
             </Field>
 
             <Field label="Alamat Domisili" htmlFor="alamat" error={err('alamat')}>
-              <textarea id="alamat" rows={3} className={inputCls} value={form.alamat} onChange={set('alamat')} required maxLength={500} />
+              <textarea id="alamat" placeholder="Contoh: Jl. Kenanga No. 12, Kel. Umbulharjo, Kec. Umbulharjo, Kota Yogyakarta" rows={3} className={inputCls} value={form.alamat} onChange={set('alamat')} required maxLength={500} />
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Contoh: 081234567890">
-                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="08xxxxxxxxxx" />
+                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
               </Field>
               <Field label="Email" htmlFor="email" error={err('email')}>
-                <input id="email" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
+                <input id="email" placeholder="Contoh: budi.santoso@email.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
               </Field>
             </div>
           </Section>
 
-          {/* ANGGOTA KELOMPOK */}
-          {tipe === 'kelompok' && (
-            <Section judul="Data Anggota Kelompok" icon="users">
-              <div data-error={err('anggota') ? 'true' : undefined}>
-                {err('anggota') && <p className="mb-3 text-xs text-red-600">{err('anggota')}</p>}
-                <div className="space-y-4">
-                  {anggota.map((a, i) => (
-                    <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} err={err} />
-                  ))}
-                </div>
-                <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
-                  className="mt-4 w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
-                  + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
-                </button>
+          {/* ANGGOTA KELOMPOK (opsional) */}
+          <Section judul="Anggota Kelompok (Opsional)" icon="users">
+            <p className="-mt-2 text-sm text-slate-600">
+              Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
+            </p>
+            {anggota.length > 0 && (
+              <div className="space-y-4">
+                {anggota.map((a, i) => (
+                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} err={err} />
+                ))}
               </div>
-            </Section>
-          )}
+            )}
+            <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
+              className="w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+              + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
+            </button>
+          </Section>
 
-          {/* DATA MAGANG */}
+          {/* B. DATA MAGANG */}
           <Section judul="Data Magang" icon="briefcase">
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Periode Magang: Mulai" htmlFor="periode_mulai" error={err('periode_mulai')}>
+              <Field label="Periode Magang: Mulai" htmlFor="periode_mulai" error={err('periode_mulai')} hint="Contoh: 5 Januari 2027">
                 <input id="periode_mulai" type="date" className={inputCls} value={form.periode_mulai} onChange={set('periode_mulai')} required min={HARI_INI} />
               </Field>
-              <Field label="Periode Magang: Selesai" htmlFor="periode_selesai" error={err('periode_selesai')}>
+              <Field label="Periode Magang: Selesai" htmlFor="periode_selesai" error={err('periode_selesai')} hint="Contoh: 5 April 2027">
                 <input id="periode_selesai" type="date" className={inputCls} value={form.periode_selesai} onChange={set('periode_selesai')} required min={form.periode_mulai || undefined} />
               </Field>
             </div>
 
-            <Field label="Durasi Magang" htmlFor="durasi" error={err('durasi') ?? err('durasi_satuan')}>
+            <Field label="Durasi Magang" htmlFor="durasi" error={err('durasi') ?? err('durasi_satuan')} hint="Contoh: 3 bulan, atau 12 minggu">
               <div className="flex gap-3">
-                <input id="durasi" type="number" min={1} max={365} className={`${inputCls} sm:max-w-[140px]`} value={form.durasi} onChange={set('durasi')} required />
+                <input id="durasi" placeholder="Contoh: 3" type="number" min={1} max={365} className={`${inputCls} sm:max-w-[140px]`} value={form.durasi} onChange={set('durasi')} required />
                 <select aria-label="Satuan durasi" className={`${inputCls} sm:max-w-[140px]`} value={form.durasi_satuan} onChange={set('durasi_satuan')}>
                   <option value="minggu">Minggu</option>
                   <option value="bulan">Bulan</option>
@@ -451,7 +537,7 @@ export default function Pendaftaran() {
               </div>
             </Field>
 
-            <Field label="Minat Formasi Magang" error={err('bidang')} hint="Pilih minimal 1, boleh lebih.">
+            <Field label="Minat Formasi Magang" anchor="bidang" error={err('bidang')} hint="Pilih minimal 1, boleh lebih.">
               {formasiMemuat && <p className="text-sm text-slate-500">Memuat daftar formasi…</p>}
 
               {formasiGagal && (
@@ -484,7 +570,7 @@ export default function Pendaftaran() {
                 {lainnya && (
                   <input
                     className={`${inputCls} mt-3`}
-                    placeholder="Tulis formasi yang diminati"
+                    placeholder="Contoh: Pendamping Layanan Kepegawaian"
                     value={lainnyaTeks}
                     onChange={(e) => setLainnyaTeks(e.target.value)}
                     maxLength={150}
@@ -496,7 +582,7 @@ export default function Pendaftaran() {
             </Field>
           </Section>
 
-          {/* DOKUMEN */}
+          {/* C. DOKUMEN */}
           <Section judul="Dokumen Pendukung" icon="fileText">
             <p className="-mt-2 text-xs text-slate-500">Format PDF, JPG, atau PNG. Ukuran maksimal 2MB per file.</p>
             {DOKUMEN.map(({ key, label, wajib }) => (
@@ -513,9 +599,9 @@ export default function Pendaftaran() {
             ))}
           </Section>
 
-          {/* PERNYATAAN */}
+          {/* D. PERNYATAAN */}
           <Section judul="Pernyataan" icon="cap">
-            <div data-error={err('pernyataan') ? 'true' : undefined}>
+            <div id="fld-pernyataan" data-error={err('pernyataan') ? 'true' : undefined}>
               <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
                 <input type="checkbox" checked={setuju} onChange={(e) => setSetuju(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-500" />
                 <span>“Saya menyatakan data yang saya isi benar dan bersedia mengikuti aturan yang berlaku.”</span>
