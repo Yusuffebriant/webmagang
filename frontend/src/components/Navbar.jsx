@@ -11,7 +11,7 @@ export const navLinks = [
   { label: 'Cek Status', to: '/cek-status' },
 ]
 
-const base = 'flex h-full items-center border-b-2 px-0.5 text-sm font-medium transition-colors'
+const base = 'flex h-full items-center border-b-2 px-0.5 text-[15px] font-medium transition-colors'
 const idle = 'border-transparent text-slate-600 hover:text-brand-500'
 const active = 'border-brand-500 text-brand-500'
 
@@ -20,8 +20,8 @@ export default function Navbar() {
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-[68px] max-w-6xl items-center justify-between gap-6 px-6">
-        <Logo />
+      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-6 px-6">
+        <Link to="/" aria-label="Beranda BKPSDM"><Logo /></Link>
 
         <nav className="hidden h-full items-center gap-8 md:flex" aria-label="Menu utama">
           {navLinks.map((l) =>
@@ -37,7 +37,7 @@ export default function Navbar() {
         </nav>
 
         <Link to="/admin/login"
-          className="hidden items-center gap-2 rounded-lg border border-slate-300 px-4 py-2 text-xs font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 md:inline-flex">
+          className="hidden items-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 md:inline-flex">
           <Icon name="user" className="h-4 w-4" /> Login Admin
         </Link>
 
