@@ -206,21 +206,21 @@ export default function Pendaftaran() {
           {/* A. DATA PRIBADI */}
           <Section huruf="A" judul="Data Pribadi" icon="user">
             <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
-              <input id="nama_lengkap" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
+              <input id="nama_lengkap" placeholder="Contoh: Bumi Mahameru" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
             <Field label="NIM" htmlFor="nim" error={err('nim')}>
-              <input id="nim" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
+              <input id="nim" placeholder="Contoh: 2305101234" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
             </Field>
 
-            <div className="grid gap-5 sm:grid-cols-3">
-              <Field label="Universitas" htmlFor="universitas" error={err('universitas')}>
-                <input id="universitas" className={inputCls} value={form.universitas} onChange={set('universitas')} required maxLength={150} />
-              </Field>
+            <Field label="Universitas" htmlFor="universitas" error={err('universitas')}>
+              <input id="universitas" placeholder="Contoh: Universitas Duta Bangsa Surakarta" className={inputCls} value={form.universitas} onChange={set('universitas')} required maxLength={150} />
+            </Field>
+            <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Fakultas" htmlFor="fakultas" error={err('fakultas')}>
-                <input id="fakultas" className={inputCls} value={form.fakultas} onChange={set('fakultas')} required maxLength={150} />
+                <input id="fakultas" placeholder="Contoh: Fakultas Teknik" className={inputCls} value={form.fakultas} onChange={set('fakultas')} required maxLength={150} />
               </Field>
               <Field label="Program Studi" htmlFor="program_studi" error={err('program_studi')}>
-                <input id="program_studi" className={inputCls} value={form.program_studi} onChange={set('program_studi')} required maxLength={150} />
+                <input id="program_studi" placeholder="Contoh: Teknik Informatika" className={inputCls} value={form.program_studi} onChange={set('program_studi')} required maxLength={150} />
               </Field>
             </div>
 
@@ -237,7 +237,7 @@ export default function Pendaftaran() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Tempat Lahir" htmlFor="tempat_lahir" error={err('tempat_lahir')}>
-                <input id="tempat_lahir" className={inputCls} value={form.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
+                <input id="tempat_lahir" placeholder="Contoh: Yogyakarta" className={inputCls} value={form.tempat_lahir} onChange={set('tempat_lahir')} required maxLength={100} />
               </Field>
               <Field label="Tanggal Lahir" htmlFor="tanggal_lahir" error={err('tanggal_lahir')}>
                 <input id="tanggal_lahir" type="date" className={inputCls} value={form.tanggal_lahir} onChange={set('tanggal_lahir')} required max={HARI_INI} />
@@ -256,15 +256,15 @@ export default function Pendaftaran() {
             </Field>
 
             <Field label="Alamat Domisili" htmlFor="alamat" error={err('alamat')}>
-              <textarea id="alamat" rows={3} className={inputCls} value={form.alamat} onChange={set('alamat')} required maxLength={500} />
+              <textarea id="alamat" placeholder="Contoh: Jl. Kenari No. 56, Umbulharjo, Kota Yogyakarta" rows={3} className={inputCls} value={form.alamat} onChange={set('alamat')} required maxLength={500} />
             </Field>
 
             <div className="grid gap-5 sm:grid-cols-2">
-              <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Contoh: 081234567890">
-                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="08xxxxxxxxxx" />
+              <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Tulis tanpa spasi atau tanda hubung, diawali 08.">
+                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
               </Field>
               <Field label="Email" htmlFor="email" error={err('email')}>
-                <input id="email" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
+                <input id="email" placeholder="Contoh: bumi.mahameru@gmail.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
               </Field>
             </div>
           </Section>
@@ -282,7 +282,7 @@ export default function Pendaftaran() {
 
             <Field label="Durasi Magang" htmlFor="durasi" error={err('durasi') ?? err('durasi_satuan')}>
               <div className="flex gap-3">
-                <input id="durasi" type="number" min={1} max={365} className={`${inputCls} sm:max-w-[140px]`} value={form.durasi} onChange={set('durasi')} required />
+                <input id="durasi" placeholder="Contoh: 3" type="number" min={1} max={365} className={`${inputCls} sm:max-w-[140px]`} value={form.durasi} onChange={set('durasi')} required />
                 <select aria-label="Satuan durasi" className={`${inputCls} sm:max-w-[140px]`} value={form.durasi_satuan} onChange={set('durasi_satuan')}>
                   <option value="minggu">Minggu</option>
                   <option value="bulan">Bulan</option>
