@@ -16,6 +16,6 @@ export default function Logo({ light = false }) {
         <div className={`text-2xl font-extrabold tracking-tight ${light ? 'text-white' : 'text-brand-900'}`}>BKPSDM</div>
         <div className={`text-xs ${light ? 'text-slate-300' : 'text-slate-500'}`}>Kota Yogyakarta</div>
       </div>
-    </a>
+    </div>
   )
 }
