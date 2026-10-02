@@ -9,7 +9,15 @@ const FOTO_HERO = '/images/gedung_bkpsdm.jpeg'
 const FOTO_GEDUNG = '/images/gedung-bkpsdm.jpg'
 const FOTO_LAPTOP = '/images/laptop.jpg'
 
-const BIDANG_DEFAULT = ['Teknologi Informasi', 'Administrasi', 'Kepegawaian', 'Keuangan', 'Pelayanan']
+const BIDANG_DEFAULT = [
+  'Pendamping Teknis Pranata Komputer',
+  'Pendamping Pengelola Keuangan & Administrasi',
+  'Pendamping Teknis Pengelola Arsip',
+  'Programer Teknologi Informasi Data Pegawai',
+  'Pendamping Komunikasi Publik, Website & Media Sosial',
+  'Pendamping Psikologi Uji Kompetensi & Potensi',
+  'Pendamping Pengelola Talent Pool & Kediklatan',
+]
 
 const tentangMenu = [
   { icon: 'target', title: 'Visi & Misi', desc: 'Tujuan dan arah kami', href: 'https://bkpsdm.jogjakota.go.id/page/visi-misi' },

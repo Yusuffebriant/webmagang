@@ -7,7 +7,7 @@ const Shield = () => (
   </svg>
 )
 
-// Taruh logo asli di public/logo-bkpsdm.png — kalau belum ada, dipakai ikon sementara.
+// Logo ada di public/logo-bkpsdm.png — kalau file hilang, dipakai ikon sementara.
 export default function Logo({ light = false }) {
   return (
     <div className="flex items-center gap-2.5">
@@ -16,6 +16,6 @@ export default function Logo({ light = false }) {
         <div className={`text-2xl font-extrabold tracking-tight ${light ? 'text-white' : 'text-brand-900'}`}>BKPSDM</div>
         <div className={`text-xs ${light ? 'text-slate-300' : 'text-slate-500'}`}>Kota Yogyakarta</div>
       </div>
-    </div>
+    </a>
   )
 }

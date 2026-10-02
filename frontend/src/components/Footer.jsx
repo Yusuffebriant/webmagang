@@ -4,9 +4,9 @@ import Icon from './Icon'
 import { navLinks } from './Navbar'
 
 const socials = [
-  { name: 'instagram', label: 'Instagram', href: '#' },
-  { name: 'youtube', label: 'YouTube', href: '#' },
-  { name: 'globe', label: 'Website', href: '#' },
+  { name: 'instagram', label: 'Instagram', href: 'https://www.instagram.com/bkpsdmkotayk/' },
+  { name: 'youtube', label: 'YouTube', href: 'https://www.youtube.com/@bkpsdmkotajogja9527' },
+  { name: 'globe', label: 'Website', href: 'https://bkpsdm.jogjakota.go.id/' },
 ]
 
 export default function Footer() {
