@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { Link, NavLink } from 'react-router-dom'
 import Logo from './Logo'
 import Icon from './Icon'
+import { sesiMasihValid } from '../api/session'
 
 export const navLinks = [
   { label: 'Beranda', to: '/', end: true },
@@ -17,6 +18,9 @@ const active = 'border-brand-500 text-brand-500'
 
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  const adaSesi = sesiMasihValid()
+  const labelAdmin = adaSesi ? 'Dashboard Admin' : 'Login Admin'
+  const tujuanAdmin = adaSesi ? '/admin' : '/admin/login'
 
   return (
     <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
@@ -36,9 +40,9 @@ export default function Navbar() {
           )}
         </nav>
 
-        <Link to="/admin/login"
+        <Link to={tujuanAdmin}
           className="hidden items-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 md:inline-flex">
-          <Icon name="user" className="h-4 w-4" /> Login Admin
+          <Icon name="user" className="h-4 w-4" /> {labelAdmin}
         </Link>
 
         <button type="button" onClick={() => setOpen((v) => !v)}
@@ -55,9 +59,9 @@ export default function Navbar() {
               {l.label}
             </a>
           ))}
-          <Link to="/admin/login" onClick={() => setOpen(false)}
+          <Link to={tujuanAdmin} onClick={() => setOpen(false)}
             className="mt-1 block rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-500 hover:bg-brand-50">
-            Login Admin
+            {labelAdmin}
           </Link>
         </nav>
       )}
