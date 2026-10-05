@@ -53,6 +53,21 @@ class PendaftarController extends Controller
             ], 422);
         }
 
+        // Kuota bidang: tolak jika sudah penuh (kuota NULL = tidak dibatasi)
+        if ($data['status'] === StatusPendaftar::Diterima->value && $pendaftar->status !== StatusPendaftar::Diterima) {
+            $bidang = $pendaftar->bidang;
+
+            if ($bidang && $bidang->kuota !== null) {
+                $terisi = $bidang->pendaftar()->where('status', StatusPendaftar::Diterima->value)->count();
+
+                if ($terisi >= (int) $bidang->kuota) {
+                    $pesan = "Kuota bidang {$bidang->nama_bidang} sudah penuh ({$terisi}/{$bidang->kuota}).";
+
+                    return response()->json(['message' => $pesan, 'errors' => ['status' => [$pesan]]], 422);
+                }
+            }
+        }
+
         $pendaftar->update($data);
 
         return new PendaftarResource($pendaftar->load('program', 'bidang'));

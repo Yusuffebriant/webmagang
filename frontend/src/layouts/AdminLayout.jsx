@@ -32,6 +32,14 @@ function Sidebar({ admin, onNavigate, onLogout }) {
         >
           <Icon name="users" className="h-5 w-5" /> Data Pendaftar
         </NavLink>
+
+        <NavLink
+          to="/admin/kuota" onClick={onNavigate}
+          className={({ isActive }) =>
+            `${itemCls} ${isActive ? 'bg-white/10 text-white' : 'hover:bg-white/5 hover:text-white'}`}
+        >
+          <Icon name="briefcase" className="h-5 w-5" /> Kuota Magang
+        </NavLink>
       </nav>
 
       <div className="m-3 rounded-xl bg-white/5 p-3.5">
