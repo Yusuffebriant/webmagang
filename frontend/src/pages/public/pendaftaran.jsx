@@ -8,7 +8,7 @@ import Logo from '../../components/Logo'
 // false = setelah backend diperbarui sesuai formulir baru -> NIK & semester tidak ditampilkan lagi.
 const BACKEND_LAMA = true
 
-const JENJANG = ['SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1', 'S2']
+const JENJANG = ['SMA/SMK', 'D1', 'D2', 'D3', 'D4', 'S1']
 const HARI_INI = new Date().toISOString().slice(0, 10)
 const MAKS_UKURAN = 2 * 1024 * 1024 // 2MB, sama dengan validasi backend
 
@@ -72,18 +72,58 @@ function daftarMasalah(errors) {
 }
 
 const inputCls =
-  'w-full rounded-xl border border-slate-200 bg-slate-50 px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-xs placeholder:text-slate-400/60 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10'
+  'w-full rounded-xl border border-slate-200 bg-white px-4 py-3 text-sm text-slate-800 outline-none transition placeholder:text-xs placeholder:text-slate-400/60 hover:border-slate-300 focus:border-brand-500 focus:bg-white focus:ring-4 focus:ring-brand-500/10'
 
-function Section({ judul, icon, children }) {
+const TEMA = {
+  pribadi: {
+    root: 'border-slate-200 bg-gradient-to-br from-white via-white to-brand-50 pola-titik',
+    head: 'border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white',
+    judul: 'text-brand-900',
+    ikon: 'bg-brand-500 shadow-brand-500/30',
+    deco: 'absolute -top-20 -right-20 h-56 w-56 rounded-full bg-brand-200/50 blur-2xl',
+  },
+  anggota: {
+    root: 'border-slate-200 bg-slate-50 pola-diagonal',
+    head: 'border-b border-slate-200 bg-slate-100/80',
+    judul: 'text-brand-900',
+    ikon: 'bg-brand-900 shadow-brand-900/30',
+    deco: 'absolute -bottom-24 -left-16 h-64 w-64 rounded-full bg-brand-100/80 blur-2xl',
+  },
+  magang: {
+    root: 'border-brand-100 bg-gradient-to-br from-brand-50 via-white to-brand-100/70',
+    head: 'border-b border-brand-100 bg-brand-100/60',
+    judul: 'text-brand-900',
+    ikon: 'bg-brand-600 shadow-brand-600/30',
+    deco: 'absolute -top-24 -right-24 h-72 w-72 rounded-full border-[36px] border-brand-500/10',
+  },
+  dokumen: {
+    root: 'border-slate-200 bg-white pola-grid',
+    head: 'border-b border-slate-100 bg-gradient-to-r from-slate-100 to-white',
+    judul: 'text-brand-900',
+    ikon: 'bg-brand-500 shadow-brand-500/30',
+    deco: 'absolute -right-16 -bottom-16 h-52 w-52 rounded-full bg-brand-100/70 blur-2xl',
+  },
+  pernyataan: {
+    root: 'border-brand-900 bg-gradient-to-br from-brand-900 via-brand-900 to-brand-600 text-white',
+    head: 'border-b border-white/10 bg-white/5',
+    judul: 'text-white',
+    ikon: 'bg-white/15 ring-1 ring-white/25',
+    deco: 'absolute -top-16 -right-10 h-48 w-48 rounded-full bg-white/10 blur-xl',
+  },
+}
+
+function Section({ judul, icon, tema = 'pribadi', children }) {
+  const t = TEMA[tema]
   return (
-    <section className="overflow-hidden rounded-2xl border border-slate-200 bg-white shadow-sm">
-      <div className="flex items-center gap-3 border-b border-slate-100 bg-gradient-to-r from-brand-50 to-white px-6 py-4 sm:px-8">
-        <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-brand-500 text-white shadow-sm shadow-brand-500/30">
+    <section className={`relative overflow-hidden rounded-2xl border shadow-sm ${t.root}`}>
+      <div aria-hidden="true" className={`pointer-events-none ${t.deco}`} />
+      <div className={`relative flex items-center gap-3 px-6 py-4 sm:px-8 ${t.head}`}>
+        <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${t.ikon}`}>
           <Icon name={icon} className="h-5 w-5" />
         </span>
-        <h2 className="text-base font-bold text-brand-900">{judul}</h2>
+        <h2 className={`text-base font-bold ${t.judul}`}>{judul}</h2>
       </div>
-      <div className="space-y-5 px-6 py-6 sm:px-8 sm:py-7">{children}</div>
+      <div className="relative space-y-5 px-6 py-6 sm:px-8 sm:py-7">{children}</div>
     </section>
   )
 }
@@ -145,7 +185,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
     `flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${aktif ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-200'}`
 
   return (
-    <div className="rounded-xl border border-slate-200 bg-slate-50/60 p-4 sm:p-5">
+    <div className="rounded-xl border border-slate-200 bg-white/85 p-4 shadow-sm backdrop-blur-sm sm:p-5">
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-brand-900">Anggota {i + 1}</h3>
         <div className="flex items-center gap-2">
@@ -405,20 +445,26 @@ export default function Pendaftaran() {
 
   // ---------- Formulir ----------
   return (
-    <div className="bg-slate-50 pb-16">
-      <div className="bg-gradient-to-br from-brand-900 via-brand-900 to-brand-600 px-6 pt-14 pb-24 text-center">
-        <div className="flex justify-center">
+    <div className="relative overflow-hidden bg-slate-50 pb-16">
+      <div aria-hidden="true" className="pointer-events-none absolute top-[28rem] -left-32 h-96 w-96 rounded-full bg-brand-200/40 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute top-[70rem] -right-32 h-96 w-96 rounded-full bg-brand-100/80 blur-3xl" />
+      <div aria-hidden="true" className="pointer-events-none absolute bottom-24 -left-24 h-80 w-80 rounded-full bg-brand-200/30 blur-3xl" />
+      <div className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-900 to-brand-600 px-6 pt-14 pb-24 text-center">
+        <div aria-hidden="true" className="pola-titik-putih pointer-events-none absolute inset-0" />
+        <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full border-[48px] border-white/5" />
+        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-brand-500/30 blur-3xl" />
+        <div className="relative flex justify-center">
           <div className="rounded-2xl bg-white/10 px-5 py-3 backdrop-blur">
             <Logo light />
           </div>
         </div>
-        <h1 className="mt-6 text-3xl font-extrabold text-white sm:text-4xl">Formulir Pendaftaran Magang</h1>
-        <p className="mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-200">
+        <h1 className="relative mt-6 text-3xl font-extrabold text-white sm:text-4xl">Formulir Pendaftaran Magang</h1>
+        <p className="relative mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-200">
           Isi formulir ini dengan data yang sebenar-benarnya. Data Anda akan digunakan hanya untuk keperluan administrasi magang dan dijamin kerahasiaannya.
         </p>
       </div>
 
-      <div className="mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
+      <div className="relative mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
           {(masalah.length > 0 || pesan) && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -441,7 +487,7 @@ export default function Pendaftaran() {
           )}
 
           {/* DATA PRIBADI */}
-          <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user">
+          <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user" tema="pribadi">
             <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
               <input id="nama_lengkap" placeholder="Contoh: Budi Santoso" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
@@ -476,7 +522,7 @@ export default function Pendaftaran() {
             <Field label="Jenis Kelamin" anchor="jenis_kelamin" error={err('jenis_kelamin')}>
               <div className="flex gap-3">
                 {[['L', 'Laki-laki'], ['P', 'Perempuan']].map(([v, l]) => (
-                  <label key={v} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${form.jenis_kelamin === v ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-slate-300 text-slate-700 hover:border-brand-200'}`}>
+                  <label key={v} className={`flex cursor-pointer items-center gap-2 rounded-lg border px-4 py-2 text-sm transition ${form.jenis_kelamin === v ? 'border-brand-500 bg-brand-50 text-brand-600' : 'border-slate-300 bg-white text-slate-700 hover:border-brand-200'}`}>
                     <input type="radio" name="jenis_kelamin" value={v} checked={form.jenis_kelamin === v} onChange={set('jenis_kelamin')} className="accent-brand-500" />
                     {l}
                   </label>
@@ -499,7 +545,7 @@ export default function Pendaftaran() {
           </Section>
 
           {/* ANGGOTA KELOMPOK (opsional) */}
-          <Section judul="Anggota Kelompok (Opsional)" icon="users">
+          <Section judul="Anggota Kelompok (Opsional)" icon="users" tema="anggota">
             <p className="-mt-2 text-sm text-slate-600">
               Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
             </p>
@@ -517,7 +563,7 @@ export default function Pendaftaran() {
           </Section>
 
           {/* B. DATA MAGANG */}
-          <Section judul="Data Magang" icon="briefcase">
+          <Section judul="Data Magang" icon="briefcase" tema="magang">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Periode Magang: Mulai" htmlFor="periode_mulai" error={err('periode_mulai')} hint="Contoh: 5 Januari 2027">
                 <input id="periode_mulai" type="date" className={inputCls} value={form.periode_mulai} onChange={set('periode_mulai')} required min={HARI_INI} />
@@ -554,7 +600,7 @@ export default function Pendaftaran() {
                 {formasi.map((f) => {
                   const aktif = bidangIds.includes(f.id)
                   return (
-                    <label key={f.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${aktif ? 'border-brand-500 bg-brand-50' : 'border-slate-300 hover:border-brand-200'}`}>
+                    <label key={f.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${aktif ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
                       <input type="checkbox" checked={aktif} onChange={() => toggleBidang(f.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500" />
                       <span className="text-slate-700">{f.nama_bidang}</span>
                     </label>
@@ -562,7 +608,7 @@ export default function Pendaftaran() {
                 })}
               </div>
 
-              <div className={`mt-2.5 rounded-lg border px-3.5 py-3 transition ${lainnya ? 'border-brand-500 bg-brand-50' : 'border-slate-300 hover:border-brand-200'}`}>
+              <div className={`mt-2.5 rounded-lg border px-3.5 py-3 transition ${lainnya ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
                   <input type="checkbox" checked={lainnya} onChange={(e) => setLainnya(e.target.checked)} className="h-4 w-4 shrink-0 accent-brand-500" />
                   Lainnya
@@ -583,7 +629,7 @@ export default function Pendaftaran() {
           </Section>
 
           {/* C. DOKUMEN */}
-          <Section judul="Dokumen Pendukung" icon="fileText">
+          <Section judul="Dokumen Pendukung" icon="fileText" tema="dokumen">
             <p className="-mt-2 text-xs text-slate-500">Format PDF, JPG, atau PNG. Ukuran maksimal 2MB per file.</p>
             {DOKUMEN.map(({ key, label, wajib }) => (
               <Field key={key} label={label} htmlFor={key} required={wajib} error={err(key)}>
@@ -592,7 +638,7 @@ export default function Pendaftaran() {
                   type="file"
                   accept=".pdf,.jpg,.jpeg,.png"
                   onChange={pilihFile(key)}
-                  className="block w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-slate-50 p-2.5 text-sm text-slate-600 transition hover:border-brand-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-600"
+                  className="block w-full cursor-pointer rounded-xl border-2 border-dashed border-slate-300 bg-white/90 p-2.5 text-sm text-slate-600 transition hover:border-brand-500 file:mr-4 file:cursor-pointer file:rounded-lg file:border-0 file:bg-brand-500 file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white hover:file:bg-brand-600"
                 />
                 {!wajib && <p className="mt-1 text-xs text-slate-500">Opsional</p>}
               </Field>
@@ -600,13 +646,13 @@ export default function Pendaftaran() {
           </Section>
 
           {/* D. PERNYATAAN */}
-          <Section judul="Pernyataan" icon="cap">
+          <Section judul="Pernyataan" icon="cap" tema="pernyataan">
             <div id="fld-pernyataan" data-error={err('pernyataan') ? 'true' : undefined}>
-              <label className="flex cursor-pointer items-start gap-3 text-sm text-slate-700">
+              <label className="flex cursor-pointer items-start gap-3 text-sm text-white/90">
                 <input type="checkbox" checked={setuju} onChange={(e) => setSetuju(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-500" />
                 <span>“Saya menyatakan data yang saya isi benar dan bersedia mengikuti aturan yang berlaku.”</span>
               </label>
-              {err('pernyataan') && <p className="mt-1 text-xs text-red-600">{err('pernyataan')}</p>}
+              {err('pernyataan') && <p className="mt-2 text-xs font-semibold text-red-200">{err('pernyataan')}</p>}
             </div>
           </Section>
 

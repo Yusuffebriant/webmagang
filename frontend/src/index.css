@@ -18,3 +18,23 @@ section[id] { scroll-margin-top: 4.5rem; }
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
 }
+
+/* Pola latar untuk bagian-bagian formulir pendaftaran */
+.pola-titik {
+  background-image: radial-gradient(rgba(10, 132, 232, 0.18) 1.2px, transparent 1.2px);
+  background-size: 18px 18px;
+}
+.pola-grid {
+  background-image:
+    linear-gradient(rgba(11, 42, 74, 0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(11, 42, 74, 0.05) 1px, transparent 1px);
+  background-size: 28px 28px;
+}
+.pola-diagonal {
+  background-image: repeating-linear-gradient(135deg, rgba(10, 132, 232, 0.08) 0 2px, transparent 2px 14px);
+}
+.pola-titik-putih {
+  background-image: radial-gradient(rgba(255, 255, 255, 0.16) 1.2px, transparent 1.2px);
+  background-size: 22px 22px;
+  mask-image: linear-gradient(to bottom, #000, transparent 85%);
+}
