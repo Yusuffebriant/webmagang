@@ -34,7 +34,7 @@ export default function Footer() {
           </div>
         </div>
         <div className="mt-6 flex flex-col justify-between gap-2 border-t border-white/10 pt-4 text-xs text-slate-400 sm:flex-row">
-          <p>© {new Date().getFullYear()} BKPSDM Kota Yogyakarta. All rights reserved.</p>
+          <p>© {new Date().getFullYear()} BY. UNIVERSITAS DUTA BANGSA SURAKARTA - BKPSDM Kota Yogyakarta. All rights reserved.</p>
           <p className="text-slate-300">Melayani dengan Profesional, Membangun SDM Unggul</p>
         </div>
       </div>

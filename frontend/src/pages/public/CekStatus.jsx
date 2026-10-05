@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
+import { rapikanNama } from '../../lib/status'
 
 // Format nomor dari backend: MGG-YYYYMM-0001
 const POLA_NOMOR = /^MGG-\d{6}-\d{4,}$/
@@ -237,13 +238,30 @@ export default function CekStatus() {
               <dl className="divide-y divide-slate-100 border-t border-slate-100">
                 <Baris label="Nama">{hasil.nama_lengkap}</Baris>
                 <Baris label="Asal Kampus">{[hasil.universitas, hasil.program_studi].filter(Boolean).join(' – ')}</Baris>
-                {hasil.program && <Baris label="Program">{hasil.program}</Baris>}
+                {hasil.program && <Baris label="Program">{rapikanNama(hasil.program)}</Baris>}
                 {hasil.bidang && <Baris label="Formasi">{hasil.bidang}</Baris>}
                 <Baris label="Periode Magang">
                   {hasil.periode_mulai ? `${tanggal(hasil.periode_mulai)} s.d. ${tanggal(hasil.periode_selesai)}` : '-'}
                 </Baris>
                 <Baris label="Tanggal Mendaftar">{tanggal(hasil.created_at)}</Baris>
               </dl>
+
+              {hasil.status === 'ditolak' && (
+                <div className="rounded-lg border border-brand-200 bg-brand-50 px-4 py-4">
+                  <p className="text-sm font-semibold text-brand-900">Ingin memperbaiki pendaftaran?</p>
+                  <p className="mt-1 text-sm leading-relaxed text-slate-600">
+                    Data Anda akan terisi otomatis di formulir. Perbaiki sesuai catatan, unggah ulang dokumen, lalu kirim.
+                    Pendaftaran baru akan mendapat nomor pendaftaran baru.
+                  </p>
+                  <Link
+                    to="/pendaftaran"
+                    state={{ prefill: hasil }}
+                    className="mt-3 inline-flex items-center gap-2 rounded-lg bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600"
+                  >
+                    Perbaiki &amp; Daftar Ulang <Icon name="arrowRight" className="h-4 w-4" />
+                  </Link>
+                </div>
+              )}
 
               <div className="flex flex-col gap-3 sm:flex-row">
                 <button
