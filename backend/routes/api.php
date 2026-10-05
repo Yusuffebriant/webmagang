@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\DashboardController;
+use App\Http\Controllers\Api\Admin\KuotaController;
 use App\Http\Controllers\Api\Admin\PendaftarController as AdminPendaftarController;
 use App\Http\Controllers\Api\Public\CekStatusController;
 use App\Http\Controllers\Api\Public\PendaftaranController;
@@ -26,6 +27,11 @@ Route::prefix('admin')->group(function () {
         Route::post('logout', [AuthController::class, 'logout']);
         Route::get('me', [AuthController::class, 'me']);
         Route::get('dashboard', [DashboardController::class, 'index']);
+
+        Route::get('kuota', [KuotaController::class, 'index']);
+        Route::patch('kuota/{bidang}', [KuotaController::class, 'update']);
+        Route::post('bidang', [KuotaController::class, 'store']);
+        Route::delete('bidang/{bidang}', [KuotaController::class, 'destroy']);
 
         Route::get('pendaftar/export', [AdminPendaftarController::class, 'export']);
         Route::get('pendaftar', [AdminPendaftarController::class, 'index']);

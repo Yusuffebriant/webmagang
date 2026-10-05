@@ -47,3 +47,27 @@ export async function unggahLoa(id, file) {
   const { data } = await api.post(`/admin/pendaftar/${id}/loa`, form)
   return data.data ?? data
 }
+
+// GET /api/admin/kuota -> [{ id, nama_bidang, status, kuota|null, terisi, sisa|null, total_pendaftar }]
+export async function getKuota(signal) {
+  const { data } = await api.get('/admin/kuota', { signal })
+  return data.data ?? data
+}
+
+// PATCH /api/admin/kuota/{id}  { kuota: number|null }  -> bidang terbaru
+export async function ubahKuota(id, kuota) {
+  const { data } = await api.patch(`/admin/kuota/${id}`, { kuota })
+  return data.data ?? data
+}
+
+// POST /api/admin/bidang  { nama_bidang, deskripsi?, kuota? }  -> bidang baru (status aktif)
+export async function tambahBidang(payload) {
+  const { data } = await api.post('/admin/bidang', payload)
+  return data.data ?? data
+}
+
+// DELETE /api/admin/bidang/{id}  -> hanya berhasil jika bidang belum punya pendaftar
+export async function hapusBidang(id) {
+  const { data } = await api.delete(`/admin/bidang/${id}`)
+  return data
+}
