@@ -39,3 +39,11 @@ export async function ubahStatus(id, { status, catatan }) {
   const { data } = await api.patch(`/admin/pendaftar/${id}/status`, { status, catatan })
   return data.data ?? data
 }
+
+// POST /api/admin/pendaftar/{id}/loa  (multipart: loa) -> pendaftar terbaru. Hanya untuk status 'diverifikasi'.
+export async function unggahLoa(id, file) {
+  const form = new FormData()
+  form.append('loa', file)
+  const { data } = await api.post(`/admin/pendaftar/${id}/loa`, form)
+  return data.data ?? data
+}

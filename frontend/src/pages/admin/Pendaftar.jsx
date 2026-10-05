@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getPendaftar, getPendaftarList, ubahStatus } from '../../api/admin'
+import { getPendaftar, getPendaftarList, ubahStatus, unggahLoa } from '../../api/admin'
 import Icon from '../../components/Icon'
 import StatusBadge from '../../components/StatusBadge'
-import { STATUS, tanggal } from '../../lib/status'
+import { STATUS, tanggal, rapikanNama } from '../../lib/status'
 
 const KUNCI = Object.keys(STATUS)
 const TAB = [{ key: '', label: 'Semua' }, ...KUNCI.map((k) => ({ key: k, label: STATUS[k].label }))]
@@ -22,7 +22,7 @@ const AKSI = {
     { to: 'ditolak', label: 'Tolak', cls: btn.danger },
   ],
   diverifikasi: [
-    { to: 'diterima', label: 'Terima Magang', cls: btn.emerald },
+    { to: 'diterima', label: 'Terima Magang', cls: btn.emerald, perluLoa: true },
     { to: 'ditolak', label: 'Tolak', cls: btn.danger },
     { to: 'menunggu_verifikasi', label: 'Kembalikan ke Menunggu', cls: btn.ghost },
   ],
@@ -39,6 +39,8 @@ const TANYA = {
   ditolak: 'Tolak pendaftaran ini? Alasan penolakan wajib diisi.',
   menunggu_verifikasi: 'Kembalikan pendaftaran ini ke status menunggu verifikasi?',
 }
+
+const BATAS_LOA = 2 * 1024 * 1024 // 2 MB, sama dengan validasi backend
 
 const namaDokumen = (j) => String(j ?? '').replace(/_/g, ' ').replace(/^\w/, (c) => c.toUpperCase())
 
@@ -74,10 +76,15 @@ function Detail({ id, onClose, onBerubah }) {
   const [simpan, setSimpan] = useState(false)
   const [galat, setGalat] = useState('')
   const [info, setInfo] = useState('')
+  const [fileLoa, setFileLoa] = useState(null)
+  const [kirimLoa, setKirimLoa] = useState(false)
+  const [galatLoa, setGalatLoa] = useState('')
+  const inputLoa = useRef(null)
 
   useEffect(() => {
     const ctrl = new AbortController()
     setD(null); setErr(''); setAksi(null); setGalat(''); setInfo('')
+    setFileLoa(null); setGalatLoa('')
     getPendaftar(id, ctrl.signal)
       .then((x) => { setD(x); setCatatan(x.catatan ?? '') })
       .catch((e) => {
@@ -117,7 +124,27 @@ function Detail({ id, onClose, onBerubah }) {
     }
   }
 
+  async function simpanLoa() {
+    if (!fileLoa) return setGalatLoa('Pilih file LOA terlebih dahulu.')
+    if (fileLoa.size > BATAS_LOA) return setGalatLoa('Ukuran file LOA maksimal 2 MB.')
+    setKirimLoa(true); setGalatLoa(''); setInfo('')
+    try {
+      const baru = await unggahLoa(d.id, fileLoa)
+      setD((prev) => ({ ...prev, ...baru }))
+      setFileLoa(null)
+      if (inputLoa.current) inputLoa.current.value = ''
+      setInfo('LOA berhasil diunggah.')
+    } catch (e) {
+      const er = e.response?.data?.errors
+      const st = e.response?.status
+      setGalatLoa(er?.loa?.[0] ?? (st === 404 || st === 405 ? 'Fitur unggah LOA belum tersedia di server.' : e.response ? 'Gagal mengunggah LOA. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
+    } finally {
+      setKirimLoa(false)
+    }
+  }
+
   const wa = linkWA(d?.no_whatsapp)
+  const belumLoa = d?.status === 'diverifikasi' && !d?.loa_url
 
   return (
     <div className="fixed inset-0 z-50 flex justify-end" role="dialog" aria-modal="true" aria-label="Detail pendaftar">
@@ -173,7 +200,7 @@ function Detail({ id, onClose, onBerubah }) {
 
             <Bagian judul="Magang">
               <dl>
-                <Baris label="Program">{d.program}</Baris>
+                <Baris label="Program">{rapikanNama(d.program)}</Baris>
                 <Baris label="Bidang">{d.bidang}</Baris>
                 <Baris label="Periode">{`${tanggal(d.periode_mulai)} – ${tanggal(d.periode_selesai)}`}</Baris>
                 <Baris label="Mendaftar">{d.created_at}</Baris>
@@ -207,14 +234,50 @@ function Detail({ id, onClose, onBerubah }) {
                       <span className="block text-xs font-semibold text-slate-400">Catatan saat ini</span>{d.catatan}
                     </p>
                   )}
+                  {(d.status === 'diverifikasi' || d.status === 'diterima') && (
+                    <div className="mt-3 rounded-xl border border-slate-200 p-4">
+                      <p className="text-sm font-semibold text-brand-900">Surat LOA (Letter of Acceptance)</p>
+                      {d.loa_url ? (
+                        <a href={d.loa_url} target="_blank" rel="noopener noreferrer"
+                          className="mt-2 flex items-center gap-3 rounded-lg border border-slate-200 px-3 py-2.5 text-sm font-medium text-brand-900 transition hover:border-brand-500 hover:text-brand-500">
+                          <Icon name="fileText" className="h-5 w-5 shrink-0" />
+                          <span className="flex-1">Dokumen LOA</span>
+                          <span className="text-xs text-slate-400">Buka</span>
+                        </a>
+                      ) : (
+                        <p className="mt-1 text-xs text-slate-500">LOA belum diunggah.</p>
+                      )}
+                      {d.status === 'diverifikasi' && (
+                        <>
+                          <label htmlFor="loa" className="mt-3 block text-xs font-semibold text-slate-500">
+                            {d.loa_url ? 'Ganti file LOA' : 'Unggah file LOA'} (PDF, JPG, atau PNG, maks. 2 MB)
+                          </label>
+                          <input id="loa" ref={inputLoa} type="file" accept=".pdf,.jpg,.jpeg,.png,application/pdf,image/jpeg,image/png"
+                            onChange={(e) => { setFileLoa(e.target.files?.[0] ?? null); setGalatLoa('') }}
+                            className="mt-1.5 block w-full text-sm text-slate-600 file:mr-3 file:rounded-lg file:border file:border-slate-300 file:bg-white file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand-900 hover:file:border-brand-500" />
+                          {galatLoa && <p role="alert" className="mt-2 text-xs text-red-600">{galatLoa}</p>}
+                          <button type="button" onClick={simpanLoa} disabled={kirimLoa || !fileLoa}
+                            className={`mt-3 rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${btn.primary}`}>
+                            {kirimLoa ? 'Mengunggah...' : 'Simpan LOA'}
+                          </button>
+                        </>
+                      )}
+                    </div>
+                  )}
                   <div className="mt-3 flex flex-wrap gap-2">
-                    {(AKSI[d.status] ?? []).map((a) => (
-                      <button key={a.to} type="button" onClick={() => { setAksi(a.to); setGalat(''); setInfo('') }}
-                        className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition ${a.cls}`}>
-                        {a.label}
-                      </button>
-                    ))}
+                    {(AKSI[d.status] ?? []).map((a) => {
+                      const nonaktif = a.perluLoa && !d.loa_url
+                      return (
+                        <button key={a.to} type="button" disabled={nonaktif}
+                          title={nonaktif ? 'Unggah LOA terlebih dahulu' : undefined}
+                          onClick={() => { setAksi(a.to); setGalat(''); setInfo('') }}
+                          className={`rounded-lg px-4 py-2.5 text-sm font-semibold transition disabled:cursor-not-allowed disabled:opacity-50 ${a.cls}`}>
+                          {a.label}
+                        </button>
+                      )
+                    })}
                   </div>
+                  {belumLoa && <p className="mt-2 text-xs text-slate-500">Tombol Terima Magang aktif setelah LOA diunggah.</p>}
                 </>
               ) : (
                 <div className="mt-2 rounded-xl border border-slate-200 p-4">

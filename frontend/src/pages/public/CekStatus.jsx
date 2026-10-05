@@ -3,6 +3,7 @@ import { Link, useSearchParams } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
+import { rapikanNama } from '../../lib/status'
 
 // Format nomor dari backend: MGG-YYYYMM-0001
 const POLA_NOMOR = /^MGG-\d{6}-\d{4,}$/
@@ -237,7 +238,7 @@ export default function CekStatus() {
               <dl className="divide-y divide-slate-100 border-t border-slate-100">
                 <Baris label="Nama">{hasil.nama_lengkap}</Baris>
                 <Baris label="Asal Kampus">{[hasil.universitas, hasil.program_studi].filter(Boolean).join(' – ')}</Baris>
-                {hasil.program && <Baris label="Program">{hasil.program}</Baris>}
+                {hasil.program && <Baris label="Program">{rapikanNama(hasil.program)}</Baris>}
                 {hasil.bidang && <Baris label="Formasi">{hasil.bidang}</Baris>}
                 <Baris label="Periode Magang">
                   {hasil.periode_mulai ? `${tanggal(hasil.periode_mulai)} s.d. ${tanggal(hasil.periode_selesai)}` : '-'}

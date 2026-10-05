@@ -32,10 +32,6 @@ function Sidebar({ admin, onNavigate, onLogout }) {
         >
           <Icon name="users" className="h-5 w-5" /> Data Pendaftar
         </NavLink>
-
-        <Link to="/" onClick={onNavigate} className={`${itemCls} hover:bg-white/5 hover:text-white`}>
-          <Icon name="globe" className="h-5 w-5" /> Lihat Situs
-        </Link>
       </nav>
 
       <div className="m-3 rounded-xl bg-white/5 p-3.5">

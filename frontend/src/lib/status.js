@@ -29,3 +29,6 @@ export function tanggal(v) {
   if (Number.isNaN(d.getTime())) return '-'
   return d.toLocaleDateString('id-ID', { day: 'numeric', month: 'short', year: 'numeric' })
 }
+
+// Data dari server kadang masih tertulis "BKSDM"; penulisan yang benar "BKPSDM".
+export const rapikanNama = (v) => (typeof v === 'string' ? v.replace(/\bBKSDM\b/gi, 'BKPSDM') : v)

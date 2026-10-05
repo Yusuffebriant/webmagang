@@ -156,7 +156,7 @@ export default function Dashboard() {
                       </span>
                     </div>
                     <p className="mt-3 text-3xl font-extrabold tabular-nums text-brand-900">{data[field]}</p>
-                    <p className="mt-1 text-xs text-slate-400">{persen(data[field])}% dari total · <span className="font-semibold text-brand-500">Lihat →</span></p>
+                    <p className="mt-1 text-xs text-slate-400">{persen(data[field])}% dari total</p>
                   </Link>
                 )
               })}
