@@ -1,0 +1,192 @@
+import { useEffect, useState } from 'react'
+import { Link, useNavigate } from 'react-router-dom'
+import { login } from '../../api/auth'
+import { getNotice, hapusNotice } from '../../api/session'
+import Icon from '../../components/Icon'
+import Logo from '../../components/Logo'
+
+const FORMAT_EMAIL = /^\S+@\S+\.\S+$/
+
+// Pesan bawaan Laravel berbahasa Inggris -> Indonesia
+function terjemah(msg) {
+  if (!msg) return msg
+  if (/valid email/i.test(msg)) return 'Format email tidak valid. Contoh: nama@email.com'
+  if (/field is required/i.test(msg)) return 'Kolom ini wajib diisi.'
+  return msg
+}
+
+// Menerjemahkan error backend menjadi pesan untuk form.
+//  - 422: validasi / kredensial salah -> { errors: { email: [...], password: [...] } }
+//  - 429: kena throttle (maks 5 percobaan per menit)
+function bacaError(err) {
+  const res = err.response
+  if (!res) return { umum: 'Tidak dapat terhubung ke server. Pastikan backend sudah berjalan.' }
+
+  if (res.status === 422) {
+    const e = res.data?.errors ?? {}
+    return {
+      email: terjemah(e.email?.[0]),
+      password: terjemah(e.password?.[0]),
+      umum: !e.email && !e.password ? terjemah(res.data?.message) : undefined,
+    }
+  }
+  if (res.status === 429) return { umum: 'Terlalu banyak percobaan login. Silakan coba lagi dalam 1 menit.' }
+  return { umum: 'Terjadi kesalahan pada server. Silakan coba lagi.' }
+}
+
+const inputCls = (invalid) =>
+  `block w-full rounded-xl border bg-white py-3 pl-11 pr-4 text-sm text-slate-800 placeholder:text-slate-400 outline-none transition focus:ring-4 ${
+    invalid
+      ? 'border-red-300 focus:border-red-400 focus:ring-red-100'
+      : 'border-slate-300 hover:border-slate-400 focus:border-brand-500 focus:ring-brand-500/15'
+  }`
+
+export default function Login() {
+  const navigate = useNavigate()
+  const [form, setForm] = useState({ email: '', password: '' })
+  const [lihat, setLihat] = useState(false)
+  const [capsLock, setCapsLock] = useState(false)
+  const [loading, setLoading] = useState(false)
+  const [error, setError] = useState({})
+  const [notice, setNotice] = useState(() => getNotice())
+
+  useEffect(() => {
+    document.title = 'Login Admin | BKPSDM Kota Yogyakarta'
+  }, [])
+
+  const ubah = (e) => {
+    setForm((f) => ({ ...f, [e.target.name]: e.target.value }))
+    setError((er) => ({ ...er, [e.target.name]: undefined, umum: undefined }))
+  }
+
+  async function kirim(e) {
+    e.preventDefault()
+    if (loading) return
+
+    const lokal = {}
+    if (!form.email.trim()) lokal.email = 'Email wajib diisi.'
+    else if (!FORMAT_EMAIL.test(form.email.trim())) lokal.email = 'Format email tidak valid. Contoh: nama@email.com'
+    if (!form.password) lokal.password = 'Password wajib diisi.'
+    if (lokal.email || lokal.password) return setError(lokal)
+
+    setLoading(true)
+    setError({})
+    hapusNotice()
+    setNotice(null)
+    try {
+      await login(form.email.trim(), form.password)
+      navigate('/admin', { replace: true })
+    } catch (err) {
+      setError(bacaError(err))
+      setForm((f) => ({ ...f, password: '' }))
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  return (
+    <div className="relative flex min-h-screen flex-col items-center justify-center overflow-hidden bg-brand-900 px-5 py-10">
+      {/* Latar: foto hanya dimuat di layar >= sm lewat CSS, jadi tidak diunduh di HP */}
+      <div className="absolute inset-0 hidden bg-[url('/images/gedung_bkpsdm.jpeg')] bg-cover bg-center opacity-35 sm:block" />
+      <div className="absolute inset-0 bg-linear-to-br from-brand-900/95 via-brand-900/80 to-brand-600/60" />
+      <div className="absolute -right-24 -bottom-24 h-80 w-80 rounded-full bg-brand-500/20" />
+      <div className="absolute -top-20 -left-20 h-56 w-56 rounded-full border border-white/10" />
+
+      <Link
+        to="/"
+        className="absolute top-5 left-5 z-10 inline-flex items-center gap-1.5 text-sm font-medium text-slate-300 transition hover:text-white sm:top-7 sm:left-8"
+      >
+        <Icon name="arrowRight" className="h-4 w-4 rotate-180" /> Kembali ke beranda
+      </Link>
+
+      <div className="relative flex w-full flex-col items-center">
+        <Link to="/" aria-label="Beranda BKPSDM" className="mb-7"><Logo light /></Link>
+
+        <div className="w-full max-w-md rounded-2xl bg-white p-7 shadow-2xl shadow-black/30 sm:p-9">
+          <div className="flex items-center gap-3.5">
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-brand-50 text-brand-500">
+              <Icon name="lock" className="h-6 w-6" />
+            </span>
+            <div>
+              <h1 className="text-xl font-extrabold tracking-tight text-brand-900">Login Admin</h1>
+              <p className="text-sm text-slate-500">Panel Program Magang BKPSDM</p>
+            </div>
+          </div>
+
+          {notice && !error.umum && (
+            <div role="status" className="mt-6 flex items-start gap-2.5 rounded-xl border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-800">
+              <Icon name="clock" className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{notice}</span>
+            </div>
+          )}
+
+          {error.umum && (
+            <div role="alert" className="mt-6 flex items-start gap-2.5 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm text-red-700">
+              <span aria-hidden="true" className="mt-px font-bold">!</span>
+              <span>{error.umum}</span>
+            </div>
+          )}
+
+          <form onSubmit={kirim} noValidate className="mt-6 space-y-5">
+            <div>
+              <label htmlFor="email" className="mb-1.5 block text-sm font-semibold text-brand-900">Email</label>
+              <div className="relative">
+                <Icon name="mail" className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="email" name="email" type="email" autoComplete="username" autoFocus
+                  value={form.email} onChange={ubah} placeholder="nama@email.com"
+                  aria-invalid={!!error.email} aria-describedby={error.email ? 'email-err' : undefined}
+                  className={inputCls(error.email)}
+                />
+              </div>
+              {error.email && <p id="email-err" className="mt-1.5 text-xs text-red-600">{error.email}</p>}
+            </div>
+
+            <div>
+              <label htmlFor="password" className="mb-1.5 block text-sm font-semibold text-brand-900">Password</label>
+              <div className="relative">
+                <Icon name="lock" className="pointer-events-none absolute top-1/2 left-3.5 h-5 w-5 -translate-y-1/2 text-slate-400" />
+                <input
+                  id="password" name="password" type={lihat ? 'text' : 'password'} autoComplete="current-password"
+                  value={form.password} onChange={ubah} placeholder="Masukkan password"
+                  onKeyUp={(e) => setCapsLock(e.getModifierState?.('CapsLock') ?? false)}
+                  onBlur={() => setCapsLock(false)}
+                  aria-invalid={!!error.password} aria-describedby={error.password ? 'password-err' : undefined}
+                  className={`${inputCls(error.password)} pr-11`}
+                />
+                <button
+                  type="button" onClick={() => setLihat((v) => !v)}
+                  aria-label={lihat ? 'Sembunyikan password' : 'Tampilkan password'}
+                  className="absolute top-1/2 right-2 -translate-y-1/2 rounded-md p-1.5 text-slate-400 transition hover:text-brand-500"
+                >
+                  <Icon name={lihat ? 'eyeOff' : 'eye'} className="h-5 w-5" />
+                </button>
+              </div>
+              {error.password && <p id="password-err" className="mt-1.5 text-xs text-red-600">{error.password}</p>}
+              {capsLock && !error.password && <p className="mt-1.5 text-xs text-amber-600">Caps Lock sedang aktif.</p>}
+            </div>
+
+            <button
+              type="submit" disabled={loading}
+              className="flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-5 py-3.5 text-sm font-semibold text-white shadow-md shadow-brand-500/25 transition hover:bg-brand-600 focus:ring-4 focus:ring-brand-500/25 focus:outline-none disabled:cursor-not-allowed disabled:opacity-70"
+            >
+              {loading ? (
+                <>
+                  <svg className="h-4 w-4 animate-spin" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+                    <circle cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="3" className="opacity-25" />
+                    <path d="M22 12a10 10 0 0 0-10-10" stroke="currentColor" strokeWidth="3" strokeLinecap="round" />
+                  </svg>
+                  Memproses...
+                </>
+              ) : (
+                <>Masuk <Icon name="arrowRight" className="h-4 w-4" /></>
+              )}
+            </button>
+          </form>
+        </div>
+
+        <p className="mt-8 text-xs text-slate-400">© {new Date().getFullYear()} BKPSDM Kota Yogyakarta</p>
+      </div>
+    </div>
+  )
+}

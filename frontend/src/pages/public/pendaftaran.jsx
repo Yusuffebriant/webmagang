@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
@@ -223,8 +223,15 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
   )
 }
 
+// Data yang disalin dari pendaftaran yang ditolak (lewat tombol "Perbaiki & Daftar Ulang" di Cek Status).
+// Periode & durasi sengaja tidak disalin karena tanggal lama bisa sudah lewat; jenjang tidak disimpan backend.
+const SALIN = ['nama_lengkap', 'nim', 'nik', 'semester', 'universitas', 'fakultas', 'program_studi',
+  'tempat_lahir', 'tanggal_lahir', 'jenis_kelamin', 'alamat', 'no_whatsapp', 'email']
+const salinData = (p) => Object.fromEntries(SALIN.map((k) => [k, p[k] == null ? '' : String(p[k])]))
+
 export default function Pendaftaran() {
-  const [form, setForm] = useState(awal)
+  const prefill = useLocation().state?.prefill ?? null
+  const [form, setForm] = useState(() => (prefill ? { ...awal, ...salinData(prefill) } : awal))
   const [formasi, setFormasi] = useState([])
   const [formasiGagal, setFormasiGagal] = useState(false)
   const [formasiMemuat, setFormasiMemuat] = useState(true)
@@ -256,6 +263,13 @@ export default function Pendaftaran() {
       api.get('/public/program').then((r) => setProgramId(r.data[0]?.id ?? null)).catch(() => {})
     }
   }, [])
+
+  // Pilih ulang formasi yang sama (dicocokkan lewat nama) begitu daftar formasi termuat.
+  useEffect(() => {
+    if (!prefill?.bidang || !formasi.length) return
+    const cocok = formasi.find((f) => f.nama_bidang === prefill.bidang)
+    if (cocok) setBidangIds((arr) => (arr.length ? arr : [cocok.id]))
+  }, [formasi, prefill])
 
   const err = (k) => terjemah(errors[k]?.[0])
   const masalah = daftarMasalah(errors)
@@ -437,6 +451,19 @@ export default function Pendaftaran() {
                 </>
               )}
               {pesan && <p className={masalah.length > 0 ? 'mt-3' : ''}>{pesan}</p>}
+            </div>
+          )}
+
+          {prefill && (
+            <div role="status" className="rounded-xl border border-amber-200 bg-amber-50 px-5 py-4 text-sm text-amber-900">
+              <p className="font-semibold">Mengisi ulang dari pendaftaran {prefill.nomor_pendaftaran} yang ditolak.</p>
+              {prefill.catatan && (
+                <p className="mt-1">Catatan BKPSDM: <span className="font-medium">{prefill.catatan}</span></p>
+              )}
+              <p className="mt-1 text-amber-800">
+                Data diri sudah terisi otomatis. Perbaiki sesuai catatan, pilih jenjang pendidikan, atur periode dan durasi magang,
+                lalu unggah ulang dokumen (file tidak bisa terisi otomatis). Anda akan mendapat nomor pendaftaran yang baru.
+              </p>
             </div>
           )}
 
