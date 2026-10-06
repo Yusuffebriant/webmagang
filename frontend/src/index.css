@@ -1,20 +1,68 @@
 @import "tailwindcss";
 
 @theme {
+  /* Palet biru awal situs */
   --color-brand-50: #f0f7ff;
   --color-brand-100: #dcecfd;
   --color-brand-200: #bcdcfa;
   --color-brand-500: #0a84e8;
   --color-brand-600: #0872cc;
   --color-brand-900: #0b2a4a;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* gelica tidak tersedia -> Fraunces (substitusi yang disarankan DESIGN.md) */
+  --font-gelica: "gelica", "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "gelica", "Fraunces", ui-serif, Georgia, serif;
+  --font-geist: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Caveat", cursive;
 }
 
 html { scroll-behavior: smooth; }
+html, body { overflow-x: clip; }
 body { color: #334155; -webkit-font-smoothing: antialiased; }
-section[id] { scroll-margin-top: 4.5rem; }
+h1, h2 { letter-spacing: 0; }
+section[id] { scroll-margin-top: 6rem; }
+
+/* Stiker bergoyang pelan di sekitar sudut miringnya (--r) */
+.sticker { animation: sticker-wobble 4s ease-in-out infinite; }
+@keyframes sticker-wobble {
+  0%, 100% { transform: rotate(calc(var(--r) - 3deg)); }
+  50% { transform: rotate(calc(var(--r) + 3deg)); }
+}
+
+/* Navbar kapsul turun dari atas saat halaman dibuka */
+.nav-drop { animation: nav-drop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes nav-drop {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Hero: isi muncul berurutan saat halaman dibuka (--d = jeda) */
+.rise-in { animation: rise-in 800ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms) both; }
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Anak dari <Reveal> (data-show="true"): ikon/badge membal masuk, garis tergambar dari kiri */
+.pop-in { opacity: 0; transform: scale(0.4); }
+[data-show="true"] .pop-in { animation: pop-in 650ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--d, 0ms) forwards; }
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+.line-draw { transform: scaleX(0); transform-origin: left center; }
+[data-show="true"] .line-draw { animation: line-draw 700ms ease-out var(--d, 0ms) forwards; }
+@keyframes line-draw { to { transform: scaleX(1); } }
+
+/* Ikon CTA mengambang pelan */
+.float-y { animation: float-y 3.5s ease-in-out infinite; }
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .sticker, .rise-in, .float-y, .nav-drop { animation: none; }
+  .pop-in, .line-draw { opacity: 1; transform: none; animation: none !important; }
 }
