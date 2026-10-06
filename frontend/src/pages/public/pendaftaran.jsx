@@ -178,7 +178,7 @@ function PendidikanFields({ data, ubah, idp, err }) {
   )
 }
 
-function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
+function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, err }) {
   const k = (f) => err(`anggota.${i}.${f}`)
   const set = (f) => (e) => ubah(i, f, e.target.value)
   const id = (f) => `anggota_${i}_${f}`
@@ -190,10 +190,6 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-brand-900">Anggota {i + 1}</h3>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => salinKampus(i)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-500">
-            Samakan kampus dengan ketua
-          </button>
           <button type="button" onClick={() => hapus(i)}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
             Hapus
@@ -225,6 +221,14 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
           </div>
         )}
 
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+          <p className="text-sm font-semibold text-brand-900">Data Pendidikan</p>
+          <button type="button" onClick={() => salinKampus(i)} disabled={!bisaSalin}
+            title={bisaSalin ? 'Isi jenjang, kampus, fakultas, dan prodi sama seperti ketua' : 'Lengkapi data pendidikan ketua terlebih dahulu'}
+            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50">
+            Samakan dengan ketua
+          </button>
+        </div>
         <PendidikanFields data={data} ubah={(f, v) => ubah(i, f, v)} idp={`anggota_${i}_`} err={k} />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -570,7 +574,7 @@ export default function Pendaftaran() {
             {anggota.length > 0 && (
               <div className="space-y-4">
                 {anggota.map((a, i) => (
-                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} err={err} />
+                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} bisaSalin={Boolean(form.jenjang && form.universitas && form.program_studi)} err={err} />
                 ))}
               </div>
             )}

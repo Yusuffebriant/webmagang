@@ -15,7 +15,7 @@ class PendaftarController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Pendaftar::with('program', 'bidang')->latest();
+        $query = Pendaftar::with('program', 'bidang')->withCount('anggota')->latest();
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -35,7 +35,7 @@ class PendaftarController extends Controller
 
     public function show(Pendaftar $pendaftar)
     {
-        return new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang'));
+        return new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang', 'anggota'));
     }
 
     public function updateStatus(Request $request, Pendaftar $pendaftar)
