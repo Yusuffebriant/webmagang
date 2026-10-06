@@ -254,11 +254,15 @@ export default function Kuota() {
     setGalat('')
     try {
       const baru = await ubahKuota(b.id, kuota)
+      if (!baru || baru.kuota !== kuota) {
+        setGalat('Server tidak mengembalikan nilai kuota yang disimpan. Pastikan migrasi database sudah dijalankan (php artisan migrate).')
+        return
+      }
       setDaftar((arr) => arr.map((x) => (x.id === baru.id ? baru : x)))
       setEdit(null)
       setInfo(`Kuota bidang ${baru.nama_bidang} berhasil disimpan.`)
     } catch (e) {
-      setGalat(e.response?.data?.errors?.kuota?.[0] ?? (e.response ? 'Gagal menyimpan kuota. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
+      setGalat(e.response?.data?.errors?.kuota?.[0] ?? e.response?.data?.message ?? (e.response ? 'Gagal menyimpan kuota. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
     } finally {
       setMenyimpan(false)
     }
