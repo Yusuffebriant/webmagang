@@ -171,7 +171,7 @@ function Detail({ id, onClose, onBerubah }) {
           <>
             {info && <p role="status" className="mx-5 mt-4 rounded-xl border border-emerald-200 bg-emerald-50 px-4 py-3 text-sm text-emerald-700 sm:mx-6">{info}</p>}
 
-            <Bagian judul="Data Diri">
+            <Bagian judul={d.anggota?.length ? 'Data Diri Ketua' : 'Data Diri'}>
               <dl>
                 <Baris label="Nama">{d.nama_lengkap}</Baris>
                 <Baris label="NIK">{d.nik}</Baris>
@@ -197,6 +197,42 @@ function Detail({ id, onClose, onBerubah }) {
                 <Baris label="Semester">{d.semester}</Baris>
               </dl>
             </Bagian>
+
+            {d.anggota?.length > 0 && (
+              <Bagian judul={`Anggota Kelompok (${d.anggota.length} orang)`}>
+                <div className="mt-2 space-y-3">
+                  {d.anggota.map((a, i) => {
+                    const waA = linkWA(a.no_whatsapp)
+                    return (
+                      <div key={a.id} className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-2">
+                        <p className="border-b border-slate-200 py-2 text-sm font-bold text-brand-900">
+                          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[11px] text-white">{i + 1}</span>
+                          {a.nama_lengkap}
+                        </p>
+                        <dl className="divide-y divide-slate-100">
+                          <Baris label="NIM">{a.nim}</Baris>
+                          <Baris label="NIK">{a.nik}</Baris>
+                          <Baris label="TTL">{`${a.tempat_lahir ?? ''}, ${tanggal(a.tanggal_lahir)}`}</Baris>
+                          <Baris label="Jenis kelamin">{a.jenis_kelamin === 'L' ? 'Laki-laki' : a.jenis_kelamin === 'P' ? 'Perempuan' : '-'}</Baris>
+                          <Baris label="Alamat">{a.alamat}</Baris>
+                          <Baris label="WhatsApp">
+                            {a.no_whatsapp}{' '}
+                            {waA && <a href={waA} target="_blank" rel="noopener noreferrer" className="ml-1 text-xs font-semibold text-brand-500 hover:underline">Chat</a>}
+                          </Baris>
+                          <Baris label="Email">
+                            <a href={`mailto:${a.email}`} className="text-brand-500 hover:underline">{a.email}</a>
+                          </Baris>
+                          <Baris label="Universitas">{a.universitas}</Baris>
+                          <Baris label="Fakultas">{a.fakultas === '-' ? '' : a.fakultas}</Baris>
+                          <Baris label="Program studi">{a.program_studi}</Baris>
+                          <Baris label="Semester">{a.semester}</Baris>
+                        </dl>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Bagian>
+            )}
 
             <Bagian judul="Magang">
               <dl>
@@ -428,6 +464,11 @@ export default function Pendaftar() {
                       <button type="button" onClick={() => ubah({ buka: p.id })} className="text-left font-semibold text-brand-900 hover:text-brand-500">
                         {p.nama_lengkap}
                       </button>
+                      {p.jumlah_anggota > 0 && (
+                        <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
+                          Kelompok · {p.jumlah_anggota + 1} orang
+                        </span>
+                      )}
                       <p className="font-mono text-xs text-slate-400">{p.nomor_pendaftaran} · {p.nim}</p>
                     </td>
                     <td className="px-3 py-3.5 text-slate-600">{p.universitas}</td>

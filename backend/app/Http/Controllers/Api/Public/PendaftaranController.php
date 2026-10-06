@@ -19,14 +19,19 @@ class PendaftaranController extends Controller
     {
         $data = $request->validated();
         $dokumen = $data['dokumen'];
-        unset($data['dokumen']);
+        $anggota = $data['anggota'] ?? [];
+        unset($data['dokumen'], $data['anggota']);
 
-        $pendaftar = DB::transaction(function () use ($data, $dokumen) {
+        $pendaftar = DB::transaction(function () use ($data, $dokumen, $anggota) {
             $pendaftar = Pendaftar::create([
                 ...$data,
                 'nomor_pendaftaran' => $this->nomorService->generate(),
                 'status'            => 'menunggu_verifikasi',
             ]);
+
+            if ($anggota) {
+                $pendaftar->anggota()->createMany($anggota);
+            }
 
             foreach ($dokumen as $item) {
                 $path = $item['file']->store('dokumen-pendaftar', 'public');
@@ -42,7 +47,7 @@ class PendaftaranController extends Controller
 
         return response()->json([
             'message' => 'Pendaftaran berhasil dikirim.',
-            'data'    => new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang')),
+            'data'    => new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang', 'anggota')),
         ], 201);
     }
 }
