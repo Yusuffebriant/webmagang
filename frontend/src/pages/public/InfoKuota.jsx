@@ -3,12 +3,13 @@ import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Icon from '../../components/Icon'
 
-// Penanda status tiap formasi (selaras dengan halaman Kuota di admin)
+// Penanda status tiap formasi (selaras dengan halaman Kuota di admin).
+// Hampir penuh = sudah ada yang terisi dan sisa kuota tinggal 1-2 orang.
 function statusKuota(f) {
   if (f.kuota === null) return { kode: 'belum', label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
   if (f.kuota === 0) return { kode: 'tutup', label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
   if (f.sisa_kuota === 0) return { kode: 'penuh', label: 'Penuh', badge: 'bg-red-50 text-red-700', bar: 'bg-red-500', aksen: 'bg-red-500' }
-  if (f.sisa_kuota / f.kuota <= 0.2) return { kode: 'hampir', label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500', aksen: 'bg-amber-500' }
+  if (f.terisi > 0 && f.sisa_kuota <= 2) return { kode: 'hampir', label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500', aksen: 'bg-amber-500' }
   return { kode: 'tersedia', label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500', aksen: 'bg-emerald-500' }
 }
 
