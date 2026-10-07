@@ -2,16 +2,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Icon from '../../components/Icon'
-
-// Penanda status tiap formasi (selaras dengan halaman Kuota di admin).
-// Hampir penuh = sudah ada yang terisi dan sisa kuota tinggal 1-2 orang.
-function statusKuota(f) {
-  if (f.kuota === null) return { kode: 'belum', label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
-  if (f.kuota === 0) return { kode: 'tutup', label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
-  if (f.sisa_kuota === 0) return { kode: 'penuh', label: 'Penuh', badge: 'bg-red-50 text-red-700', bar: 'bg-red-500', aksen: 'bg-red-500' }
-  if (f.terisi > 0 && f.sisa_kuota <= 2) return { kode: 'hampir', label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500', aksen: 'bg-amber-500' }
-  return { kode: 'tersedia', label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500', aksen: 'bg-emerald-500' }
-}
+import { statusKuota } from '../../utils/kuota'
 
 const FILTER = [
   { id: 'semua', label: 'Semua', cocok: () => true },
@@ -45,11 +36,9 @@ function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
 function KartuFormasi({ f }) {
   const s = statusKuota(f)
   const diatur = f.kuota !== null && f.kuota > 0
-  const persen = diatur ? Math.min(100, Math.round((f.terisi / f.kuota) * 100)) : 0
 
   return (
     <article className="relative flex flex-col overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm transition hover:shadow-md">
-      <div className={`h-1 ${s.aksen}`} />
       <div className="flex flex-1 flex-col p-4">
         <div className="flex items-start justify-between gap-3">
           <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-brand-50 text-brand-500">
@@ -75,11 +64,6 @@ function KartuFormasi({ f }) {
                   <span className="font-semibold text-slate-700 tabular-nums">{f.terisi}</span> terisi dari{' '}
                   <span className="font-semibold text-slate-700 tabular-nums">{f.kuota}</span>
                 </p>
-              </div>
-              <div className="mt-2.5 h-2 overflow-hidden rounded-full bg-slate-100"
-                role="progressbar" aria-valuemin={0} aria-valuemax={f.kuota} aria-valuenow={f.terisi}
-                aria-label={`Kuota terisi ${f.terisi} dari ${f.kuota}`}>
-                <div className={`h-full rounded-full transition-all ${s.bar}`} style={{ width: `${persen}%` }} />
               </div>
             </>
           ) : (
@@ -157,7 +141,7 @@ export default function InfoKuota() {
           <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
             <Ringkasan judul="Total Formasi" nilai={total.formasi} icon="briefcase" />
             <Ringkasan judul="Total Kuota" nilai={total.kuota} catatan="dari formasi yang sudah diatur" icon="users" />
-            <Ringkasan judul="Sudah Terisi" nilai={total.terisi} catatan="pendaftar diterima" icon="shieldCheck" />
+            <Ringkasan judul="Sudah Terisi" nilai={total.terisi} catatan="peserta diterima" icon="shieldCheck" />
             <Ringkasan judul="Kuota Tersisa" nilai={total.sisa} icon="target" gelap />
           </div>
         )}
@@ -214,8 +198,8 @@ export default function InfoKuota() {
         </div>
 
         <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
-          Kuota terisi dihitung dari pendaftar yang sudah berstatus <span className="font-semibold">diterima</span>. Angka dapat berubah
-          sewaktu-waktu mengikuti hasil verifikasi.
+          Kuota terisi dihitung per orang (ketua dan anggota kelompok) dari pendaftaran yang sudah berstatus <span className="font-semibold">diterima</span>.
+          Angka dapat berubah sewaktu-waktu mengikuti hasil verifikasi.
         </p>
 
         {/* Ajakan daftar */}

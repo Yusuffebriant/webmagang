@@ -4,6 +4,7 @@ import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
 import { unduhBuktiPendaftaran } from '../../utils/buktiPendaftaran'
+import { statusKuota, teksKuota } from '../../utils/kuota'
 
 // true  = cocokkan dengan backend LAMA (butuh NIK, semester, program, 1 formasi, dokumen[]).
 // false = setelah backend diperbarui sesuai formulir baru -> NIK & semester tidak ditampilkan lagi.
@@ -25,6 +26,7 @@ const MAKS_ANGGOTA = 9 // anggota di luar ketua
 const anggotaKosong = () => ({
   nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '', jenjang: '',
   tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '', alamat: '', no_whatsapp: '', email: '',
+  bidang_magang_id: '', // kosong = sama dengan bidang ketua
 })
 
 const awal = {
@@ -40,7 +42,7 @@ const LABEL = {
   tanggal_lahir: 'Tanggal Lahir', jenis_kelamin: 'Jenis Kelamin', alamat: 'Alamat Domisili',
   no_whatsapp: 'Nomor HP', email: 'Email', periode_mulai: 'Periode Magang Mulai',
   periode_selesai: 'Periode Magang Selesai', durasi: 'Durasi Magang', durasi_satuan: 'Satuan Durasi',
-  bidang: 'Minat Formasi Magang', surat_pengantar: 'Surat Pengantar', cv: 'CV',
+  bidang: 'Minat Formasi Magang', bidang_magang_id: 'Bidang Magang', surat_pengantar: 'Surat Pengantar', cv: 'CV',
   transkrip: 'Transkrip / KHS', rencana_kegiatan: 'Rencana Kegiatan', pernyataan: 'Pernyataan',
   anggota: 'Anggota Kelompok', nik: 'NIK', semester: 'Semester', program_magang_id: 'Program Magang',
 }
@@ -178,7 +180,7 @@ function PendidikanFields({ data, ubah, idp, err }) {
   )
 }
 
-function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, err }) {
+function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidangKetua, err }) {
   const k = (f) => err(`anggota.${i}.${f}`)
   const set = (f) => (e) => ubah(i, f, e.target.value)
   const id = (f) => `anggota_${i}_${f}`
@@ -202,8 +204,8 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, err }) {
           <Field label="Nama Lengkap" htmlFor={id('nama_lengkap')} error={k('nama_lengkap')}>
             <input id={id('nama_lengkap')} placeholder="Contoh: Rina Wulandari" className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
           </Field>
-          <Field label="NIM" htmlFor={id('nim')} error={k('nim')}>
-            <input id={id('nim')} placeholder="Contoh: 21051235" className={inputCls} value={data.nim} onChange={set('nim')} required maxLength={30} />
+          <Field label="NIM" htmlFor={id('nim')} error={k('nim')} hint="Hanya angka">
+            <input id={id('nim')} placeholder="Contoh: 21051235" inputMode="numeric" pattern="[0-9]+" title="NIM hanya boleh berisi angka" className={inputCls} value={data.nim} onChange={(e) => ubah(i, 'nim', e.target.value.replace(/\D/g, ''))} required maxLength={30} />
           </Field>
         </div>
 
@@ -220,6 +222,35 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, err }) {
             </Field>
           </div>
         )}
+
+        <Field label="Bidang Magang" htmlFor={id('bidang_magang_id')} error={k('bidang_magang_id')} required={false}
+          hint="Pilih salah satu. Boleh berbeda dari ketua. Kuota dihitung per orang di bidang yang dipilih.">
+          <div id={id('bidang_magang_id')} role="radiogroup" className="grid gap-2.5 sm:grid-cols-2">
+            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition sm:col-span-2 ${data.bidang_magang_id === '' ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
+              <input type="radio" name={id('bidang')} checked={data.bidang_magang_id === ''} onChange={() => ubah(i, 'bidang_magang_id', '')} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500" />
+              <span className="text-slate-700">{bidangKetua ? `Sama dengan ketua (${bidangKetua})` : 'Sama dengan ketua'}</span>
+            </label>
+            {formasi.map((f) => {
+              const st = statusKuota(f)
+              const aktif = String(data.bidang_magang_id) === String(f.id)
+              const kunci = !st.bisaDipilih
+              return (
+                <label key={f.id} className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${kunci ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-70' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
+                  <input type="radio" name={id('bidang')} checked={aktif && !kunci} disabled={kunci} onChange={() => ubah(i, 'bidang_magang_id', String(f.id))} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
+                  <span className="min-w-0 flex-1">
+                    <span className="flex items-start justify-between gap-2">
+                      <span className={kunci ? 'text-slate-500' : 'text-slate-700'}>{f.nama_bidang}</span>
+                      {st.kode !== 'tersedia' && st.kode !== 'belum' && (
+                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.badge}`}>{st.label}</span>
+                      )}
+                    </span>
+                    <span className={`mt-0.5 block text-xs ${st.kode === 'hampir' ? 'font-semibold text-amber-600' : 'text-slate-500'}`}>{teksKuota(f)}</span>
+                  </span>
+                </label>
+              )
+            })}
+          </div>
+        </Field>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
           <p className="text-sm font-semibold text-brand-900">Data Pendidikan</p>
@@ -293,7 +324,7 @@ export default function Pendaftaran() {
     setFormasiGagal(false)
     return api.get('/public/bidang')
       .then((r) => setFormasi(r.data))
-      .catch(() => setFormasiGagal(true))
+      .catch((e) => { console.error('Gagal memuat formasi:', e.response?.status, e.response?.data ?? e.message); setFormasiGagal(true) })
       .finally(() => setFormasiMemuat(false))
   }
 
@@ -513,8 +544,8 @@ export default function Pendaftaran() {
             <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
               <input id="nama_lengkap" placeholder="Contoh: Budi Santoso" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
-            <Field label="NIM" htmlFor="nim" error={err('nim')}>
-              <input id="nim" placeholder="Contoh: 21051234" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
+            <Field label="NIM" htmlFor="nim" error={err('nim')} hint="Hanya angka">
+              <input id="nim" placeholder="Contoh: 21051234" inputMode="numeric" pattern="[0-9]+" title="NIM hanya boleh berisi angka" className={inputCls} value={form.nim} onChange={(e) => setForm((f) => ({ ...f, nim: e.target.value.replace(/\D/g, '') }))} required maxLength={30} />
             </Field>
             {BACKEND_LAMA && (
               <div className="grid gap-5 sm:grid-cols-2">
@@ -566,24 +597,6 @@ export default function Pendaftaran() {
             </div>
           </Section>
 
-          {/* ANGGOTA KELOMPOK (opsional) */}
-          <Section judul="Anggota Kelompok (Opsional)" icon="users" tema="anggota">
-            <p className="-mt-2 text-sm text-slate-600">
-              Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
-            </p>
-            {anggota.length > 0 && (
-              <div className="space-y-4">
-                {anggota.map((a, i) => (
-                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} bisaSalin={Boolean(form.jenjang && form.universitas && form.program_studi)} err={err} />
-                ))}
-              </div>
-            )}
-            <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
-              className="w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
-              + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
-            </button>
-          </Section>
-
           {/* B. DATA MAGANG */}
           <Section judul="Data Magang" icon="briefcase" tema="magang">
             <div className="grid gap-5 sm:grid-cols-2">
@@ -620,11 +633,21 @@ export default function Pendaftaran() {
 
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {formasi.map((f) => {
+                  const st = statusKuota(f)
                   const aktif = bidangIds.includes(f.id)
+                  const kunci = !st.bisaDipilih
                   return (
-                    <label key={f.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${aktif ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
-                      <input type="checkbox" checked={aktif} onChange={() => toggleBidang(f.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500" />
-                      <span className="text-slate-700">{f.nama_bidang}</span>
+                    <label key={f.id} className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${kunci ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-70' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
+                      <input type="checkbox" checked={aktif && !kunci} disabled={kunci} onChange={() => toggleBidang(f.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
+                      <span className="min-w-0 flex-1">
+                        <span className="flex items-start justify-between gap-2">
+                          <span className={kunci ? 'text-slate-500' : 'text-slate-700'}>{f.nama_bidang}</span>
+                          {st.kode !== 'tersedia' && st.kode !== 'belum' && (
+                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.badge}`}>{st.label}</span>
+                          )}
+                        </span>
+                        <span className={`mt-0.5 block text-xs ${st.kode === 'hampir' ? 'font-semibold text-amber-600' : 'text-slate-500'}`}>{teksKuota(f)}</span>
+                      </span>
                     </label>
                   )
                 })}
@@ -648,6 +671,24 @@ export default function Pendaftaran() {
                 )}
               </div>
             </Field>
+          </Section>
+
+          {/* ANGGOTA KELOMPOK (opsional) */}
+          <Section judul="Anggota Kelompok (Opsional)" icon="users" tema="anggota">
+            <p className="-mt-2 text-sm text-slate-600">
+              Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
+            </p>
+            {anggota.length > 0 && (
+              <div className="space-y-4">
+                {anggota.map((a, i) => (
+                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} bisaSalin={Boolean(form.jenjang && form.universitas && form.program_studi)} formasi={formasi} bidangKetua={formasi.find((f) => f.id === bidangIds[0])?.nama_bidang} err={err} />
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
+              className="w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+              + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
+            </button>
           </Section>
 
           {/* C. DOKUMEN */}

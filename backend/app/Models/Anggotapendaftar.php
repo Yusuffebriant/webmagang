@@ -13,4 +13,5 @@ class AnggotaPendaftar extends Model
     ];
 
     public function pendaftar() { return $this->belongsTo(Pendaftar::class, 'pendaftar_id'); }
+    public function bidang() { return $this->belongsTo(BidangMagang::class, 'bidang_magang_id'); }
 }

@@ -22,6 +22,12 @@ class PendaftaranController extends Controller
         $anggota = $data['anggota'] ?? [];
         unset($data['dokumen'], $data['anggota']);
 
+        // Anggota tanpa pilihan bidang ikut bidang ketua
+        $anggota = array_map(
+            fn ($a) => array_merge($a, ['bidang_magang_id' => $a['bidang_magang_id'] ?? $data['bidang_magang_id']]),
+            $anggota
+        );
+
         $pendaftar = DB::transaction(function () use ($data, $dokumen, $anggota) {
             $pendaftar = Pendaftar::create([
                 ...$data,
@@ -47,7 +53,7 @@ class PendaftaranController extends Controller
 
         return response()->json([
             'message' => 'Pendaftaran berhasil dikirim.',
-            'data'    => new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang', 'anggota')),
+            'data'    => new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang', 'anggota.bidang')),
         ], 201);
     }
 }

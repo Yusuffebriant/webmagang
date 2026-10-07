@@ -62,12 +62,10 @@ class KuotaController extends Controller
         $kuota = $request->input('kuota');
         $kuota = ($kuota === null || $kuota === '') ? null : (int) $kuota;
 
-        $terisi = $bidang->pendaftar()
-            ->where('status', StatusPendaftar::Diterima->value)
-            ->count();
+        $terisi = $bidang->hitungTerisi();
 
         if ($kuota !== null && $kuota < $terisi) {
-            $pesan = "Kuota tidak boleh lebih kecil dari jumlah pendaftar yang sudah diterima ({$terisi}).";
+            $pesan = "Kuota tidak boleh lebih kecil dari jumlah peserta yang sudah diterima ({$terisi}).";
 
             return response()->json(['message' => $pesan, 'errors' => ['kuota' => [$pesan]]], 422);
         }
@@ -82,7 +80,7 @@ class KuotaController extends Controller
         $pesan = 'Bidang tidak dapat dihapus karena sudah memiliki pendaftar.';
         $tolak = fn () => response()->json(['message' => $pesan, 'errors' => ['bidang' => [$pesan]]], 422);
 
-        if ($bidang->pendaftar()->exists()) {
+        if ($bidang->pendaftar()->exists() || $bidang->anggota()->exists()) {
             return $tolak();
         }
 
@@ -98,10 +96,7 @@ class KuotaController extends Controller
 
     private function query()
     {
-        return BidangMagang::withCount([
-            'pendaftar as terisi' => fn ($q) => $q->where('status', StatusPendaftar::Diterima->value),
-            'pendaftar as total_pendaftar',
-        ]);
+        return BidangMagang::denganTerisi()->withCount('pendaftar as total_pendaftar');
     }
 
     private function format(BidangMagang $b): array
