@@ -4,12 +4,13 @@ import Icon from '../../components/Icon'
 
 const BATAS_MAKS = 1000
 
-// Label & warna penanda tiap bidang
+// Label & warna penanda tiap bidang.
+// Hampir penuh = sudah ada yang terisi dan sisa kuota tinggal 1-2 orang.
 function penanda(b) {
   if (b.kuota === null) return { label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300' }
   if (b.kuota === 0) return { label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300' }
   if (b.sisa === 0) return { label: 'Penuh', badge: 'bg-red-50 text-red-700', bar: 'bg-red-500' }
-  if (b.sisa / b.kuota <= 0.2) return { label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500' }
+  if (b.terisi > 0 && b.sisa <= 2) return { label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500' }
   return { label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500' }
 }
 
@@ -124,7 +125,7 @@ function DialogTambah({ onTutup, onTersimpan }) {
 
           <div>
             <label htmlFor="kuota-baru" className="text-sm font-semibold text-brand-900">Kuota</label>
-            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={isi('kuota')}
+            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={(e) => isi('kuota')({ target: { value: e.target.value.replace(/\D/g, '') } })} maxLength={6} pattern="[0-9]*"
               placeholder="Kosongkan bila tanpa batas"
               aria-invalid={Boolean(galat.kuota)}
               className={`${inputCls} sm:w-56 ${galat.kuota ? inputBad : inputOk}`} />
@@ -254,15 +255,11 @@ export default function Kuota() {
     setGalat('')
     try {
       const baru = await ubahKuota(b.id, kuota)
-      if (!baru || baru.kuota !== kuota) {
-        setGalat('Server tidak mengembalikan nilai kuota yang disimpan. Pastikan migrasi database sudah dijalankan (php artisan migrate).')
-        return
-      }
       setDaftar((arr) => arr.map((x) => (x.id === baru.id ? baru : x)))
       setEdit(null)
       setInfo(`Kuota bidang ${baru.nama_bidang} berhasil disimpan.`)
     } catch (e) {
-      setGalat(e.response?.data?.errors?.kuota?.[0] ?? e.response?.data?.message ?? (e.response ? 'Gagal menyimpan kuota. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
+      setGalat(e.response?.data?.errors?.kuota?.[0] ?? (e.response ? 'Gagal menyimpan kuota. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
     } finally {
       setMenyimpan(false)
     }
@@ -377,7 +374,8 @@ export default function Kuota() {
                                   <input
                                     type="text" inputMode="numeric" autoFocus
                                     value={edit.nilai}
-                                    onChange={(e) => { setEdit({ id: b.id, nilai: e.target.value }); setGalat('') }}
+                                    onChange={(e) => { setEdit({ id: b.id, nilai: e.target.value.replace(/\D/g, '') }); setGalat('') }}
+                                    maxLength={6} pattern="[0-9]*"
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') simpan(b)
                                       if (e.key === 'Escape') batal()

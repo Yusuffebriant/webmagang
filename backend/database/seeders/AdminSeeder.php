@@ -13,8 +13,11 @@ class AdminSeeder extends Seeder
      */
     public function run(): void
     {
+        // Ganti email lama (salah ketik "bksdm") ke "bkpsdm" tanpa membuat akun ganda.
+        User::where('email', 'admin@bksdm.com')->update(['email' => 'admin@bkpsdm.com']);
+
         User::updateOrCreate(
-            ['email' => 'admin@bksdm.com'],
+            ['email' => 'admin@bkpsdm.com'],
             [
                 'name'     => 'Administrator',
                 'password' => Hash::make('admin1'),

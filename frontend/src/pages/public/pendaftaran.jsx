@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
@@ -178,7 +178,7 @@ function PendidikanFields({ data, ubah, idp, err }) {
   )
 }
 
-function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
+function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, err }) {
   const k = (f) => err(`anggota.${i}.${f}`)
   const set = (f) => (e) => ubah(i, f, e.target.value)
   const id = (f) => `anggota_${i}_${f}`
@@ -190,10 +190,6 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-brand-900">Anggota {i + 1}</h3>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => salinKampus(i)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-500">
-            Samakan kampus dengan ketua
-          </button>
           <button type="button" onClick={() => hapus(i)}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
             Hapus
@@ -207,7 +203,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
             <input id={id('nama_lengkap')} placeholder="Contoh: Rina Wulandari" className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
           </Field>
           <Field label="NIM" htmlFor={id('nim')} error={k('nim')}>
-            <input id={id('nim')} placeholder="Contoh: 21051235" className={inputCls} value={data.nim} onChange={set('nim')} required maxLength={30} />
+            <input id={id('nim')} placeholder="Contoh: 21051235" className={inputCls} inputMode="numeric" pattern="[0-9]*" title="NIM hanya boleh berisi angka" value={data.nim} onChange={(e) => ubah(i, 'nim', e.target.value.replace(/\D/g, ''))} required maxLength={30} />
           </Field>
         </div>
 
@@ -225,6 +221,14 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
           </div>
         )}
 
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+          <p className="text-sm font-semibold text-brand-900">Data Pendidikan</p>
+          <button type="button" onClick={() => salinKampus(i)} disabled={!bisaSalin}
+            title={bisaSalin ? 'Isi jenjang, kampus, fakultas, dan prodi sama seperti ketua' : 'Lengkapi data pendidikan ketua terlebih dahulu'}
+            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50">
+            Samakan dengan ketua
+          </button>
+        </div>
         <PendidikanFields data={data} ubah={(f, v) => ubah(i, f, v)} idp={`anggota_${i}_`} err={k} />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -253,7 +257,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nomor HP (aktif & WhatsApp)" htmlFor={id('no_whatsapp')} error={k('no_whatsapp')}>
-            <input id={id('no_whatsapp')} type="tel" inputMode="tel" className={inputCls} value={data.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+            <input id={id('no_whatsapp')} type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={data.no_whatsapp} onChange={(e) => ubah(i, 'no_whatsapp', e.target.value.replace(/\D/g, ''))} required placeholder="Contoh: 081234567890" />
           </Field>
           <Field label="Email" htmlFor={id('email')} error={k('email')}>
             <input id={id('email')} placeholder="Contoh: rina.wulandari@email.com" type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
@@ -264,17 +268,53 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
   )
 }
 
+// ---------- Isi otomatis dari pendaftaran lama (tombol "Perbaiki & Daftar Ulang") ----------
+const teksAman = (v) => (v == null ? '' : String(v))
+
+// Jenjang belum disimpan di backend lama: kalau fakultas "-" berarti sekolah, selain itu dianggap S1 (bisa diganti).
+const tebakJenjang = (p) => p.jenjang || (p.fakultas === '-' ? 'SMA/SMK' : 'S1')
+
+const orangDariPrefill = (p) => ({
+  nama_lengkap: teksAman(p.nama_lengkap), nim: teksAman(p.nim), nik: teksAman(p.nik), semester: teksAman(p.semester),
+  universitas: teksAman(p.universitas), fakultas: p.fakultas === '-' ? '' : teksAman(p.fakultas),
+  program_studi: teksAman(p.program_studi), jenjang: tebakJenjang(p),
+  tempat_lahir: teksAman(p.tempat_lahir), tanggal_lahir: teksAman(p.tanggal_lahir).slice(0, 10),
+  jenis_kelamin: teksAman(p.jenis_kelamin), alamat: teksAman(p.alamat),
+  no_whatsapp: teksAman(p.no_whatsapp).replace(/\D/g, ''), email: teksAman(p.email),
+})
+
+function formDariPrefill(p) {
+  const mulai = teksAman(p.periode_mulai).slice(0, 10)
+  const selesai = teksAman(p.periode_selesai).slice(0, 10)
+  // Periode & durasi lama tetap diisi; kalau tanggal mulai sudah lewat, form akan meminta diganti saat dikirim.
+  let durasi = ''
+  if (mulai && selesai) {
+    const hari = Math.round((new Date(selesai) - new Date(mulai)) / 86400000)
+    durasi = String(Math.max(1, Math.round(hari / 30)))
+  }
+  return {
+    ...awal,
+    ...orangDariPrefill(p),
+    periode_mulai: mulai,
+    periode_selesai: selesai,
+    durasi,
+    durasi_satuan: 'bulan',
+  }
+}
+
 export default function Pendaftaran() {
-  const [form, setForm] = useState(awal)
+  const prefill = useLocation().state?.prefill ?? null
+  const [form, setForm] = useState(() => (prefill ? formDariPrefill(prefill) : awal))
   const [formasi, setFormasi] = useState([])
   const [formasiGagal, setFormasiGagal] = useState(false)
   const [formasiMemuat, setFormasiMemuat] = useState(true)
-  const [bidangIds, setBidangIds] = useState([])
+  const [bidangIds, setBidangIds] = useState(() => (prefill?.bidang_magang_id ? [prefill.bidang_magang_id] : []))
   const [lainnya, setLainnya] = useState(false)
   const [lainnyaTeks, setLainnyaTeks] = useState('')
   const [files, setFiles] = useState({})
   const [setuju, setSetuju] = useState(false)
-  const [anggota, setAnggota] = useState([])
+  const [anggota, setAnggota] = useState(() =>
+    Array.isArray(prefill?.anggota) ? prefill.anggota.slice(0, MAKS_ANGGOTA).map(orangDariPrefill) : [])
   const [errors, setErrors] = useState({})
   const [pesan, setPesan] = useState('')
   const [kirim, setKirim] = useState(false)
@@ -484,6 +524,30 @@ export default function Pendaftaran() {
 
       <div className="relative mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
+          {prefill && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-sm">
+              <p className="font-bold">Perbaiki pendaftaran {prefill.nomor_pendaftaran}</p>
+              <p className="mt-0.5 text-xs text-amber-800/80">
+                Data lama sudah terisi otomatis. Sesuaikan dengan catatan di bawah, unggah ulang dokumen, lalu kirim.
+              </p>
+              {prefill.catatan && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-3 text-red-800">
+                  <p className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Catatan dari BKPSDM</p>
+                  <p className="mt-1 whitespace-pre-line text-sm font-medium">{prefill.catatan}</p>
+                </div>
+              )}
+              <p className="mt-3 text-xs text-amber-800/80">
+                Dokumen tidak bisa terisi otomatis, jadi unggah ulang semua berkas (terutama yang dicatat di atas).
+                Periksa juga jenjang pendidikan dan periode magang.
+              </p>
+              {prefill.periode_mulai && String(prefill.periode_mulai).slice(0, 10) < HARI_INI && (
+                <p className="mt-2 text-xs font-semibold text-red-700">
+                  Tanggal mulai magang yang lama sudah lewat. Ganti periode magang dengan tanggal baru.
+                </p>
+              )}
+            </div>
+          )}
+
           {(masalah.length > 0 || pesan) && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
               {masalah.length > 0 && (
@@ -510,7 +574,7 @@ export default function Pendaftaran() {
               <input id="nama_lengkap" placeholder="Contoh: Budi Santoso" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
             <Field label="NIM" htmlFor="nim" error={err('nim')}>
-              <input id="nim" placeholder="Contoh: 21051234" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
+              <input id="nim" placeholder="Contoh: 21051234" className={inputCls} inputMode="numeric" pattern="[0-9]*" title="NIM hanya boleh berisi angka" value={form.nim} onChange={(e) => setForm((f) => ({ ...f, nim: e.target.value.replace(/\D/g, '') }))} required maxLength={30} />
             </Field>
             {BACKEND_LAMA && (
               <div className="grid gap-5 sm:grid-cols-2">
@@ -554,7 +618,7 @@ export default function Pendaftaran() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Contoh: 081234567890">
-                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+                <input id="no_whatsapp" type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={form.no_whatsapp} onChange={(e) => setForm((f) => ({ ...f, no_whatsapp: e.target.value.replace(/\D/g, '') }))} required placeholder="Contoh: 081234567890" />
               </Field>
               <Field label="Email" htmlFor="email" error={err('email')}>
                 <input id="email" placeholder="Contoh: budi.santoso@email.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
@@ -570,7 +634,7 @@ export default function Pendaftaran() {
             {anggota.length > 0 && (
               <div className="space-y-4">
                 {anggota.map((a, i) => (
-                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} err={err} />
+                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} bisaSalin={Boolean(form.jenjang && form.universitas && form.program_studi)} err={err} />
                 ))}
               </div>
             )}
