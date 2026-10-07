@@ -55,6 +55,8 @@ class PendaftarResource extends JsonResource
                 'program_studi' => $a->program_studi,
                 'semester'      => $a->semester,
                 'jenjang'       => $a->jenjang,
+                'bidang_magang_id' => $a->bidang_magang_id,
+                'bidang'        => $a->bidang?->nama_bidang,
             ])->values()),
             'created_at'        => $this->created_at?->format('Y-m-d H:i'),
         ];
