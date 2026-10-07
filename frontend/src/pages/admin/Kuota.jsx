@@ -125,7 +125,7 @@ function DialogTambah({ onTutup, onTersimpan }) {
 
           <div>
             <label htmlFor="kuota-baru" className="text-sm font-semibold text-brand-900">Kuota</label>
-            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={isi('kuota')}
+            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={(e) => isi('kuota')({ target: { value: e.target.value.replace(/\D/g, '') } })} maxLength={6} pattern="[0-9]*"
               placeholder="Kosongkan bila tanpa batas"
               aria-invalid={Boolean(galat.kuota)}
               className={`${inputCls} sm:w-56 ${galat.kuota ? inputBad : inputOk}`} />
@@ -374,7 +374,8 @@ export default function Kuota() {
                                   <input
                                     type="text" inputMode="numeric" autoFocus
                                     value={edit.nilai}
-                                    onChange={(e) => { setEdit({ id: b.id, nilai: e.target.value }); setGalat('') }}
+                                    onChange={(e) => { setEdit({ id: b.id, nilai: e.target.value.replace(/\D/g, '') }); setGalat('') }}
+                                    maxLength={6} pattern="[0-9]*"
                                     onKeyDown={(e) => {
                                       if (e.key === 'Enter') simpan(b)
                                       if (e.key === 'Escape') batal()

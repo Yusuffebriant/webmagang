@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
@@ -288,7 +288,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nomor HP (aktif & WhatsApp)" htmlFor={id('no_whatsapp')} error={k('no_whatsapp')}>
-            <input id={id('no_whatsapp')} type="tel" inputMode="tel" className={inputCls} value={data.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+            <input id={id('no_whatsapp')} type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={data.no_whatsapp} onChange={(e) => ubah(i, 'no_whatsapp', e.target.value.replace(/\D/g, ''))} required placeholder="Contoh: 081234567890" />
           </Field>
           <Field label="Email" htmlFor={id('email')} error={k('email')}>
             <input id={id('email')} placeholder="Contoh: rina.wulandari@email.com" type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
@@ -299,17 +299,53 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
   )
 }
 
+// ---------- Isi otomatis dari pendaftaran lama (tombol "Perbaiki & Daftar Ulang") ----------
+const teksAman = (v) => (v == null ? '' : String(v))
+
+// Jenjang belum disimpan di backend lama: kalau fakultas "-" berarti sekolah, selain itu dianggap S1 (bisa diganti).
+const tebakJenjang = (p) => p.jenjang || (p.fakultas === '-' ? 'SMA/SMK' : 'S1')
+
+const orangDariPrefill = (p) => ({
+  nama_lengkap: teksAman(p.nama_lengkap), nim: teksAman(p.nim), nik: teksAman(p.nik), semester: teksAman(p.semester),
+  universitas: teksAman(p.universitas), fakultas: p.fakultas === '-' ? '' : teksAman(p.fakultas),
+  program_studi: teksAman(p.program_studi), jenjang: tebakJenjang(p),
+  tempat_lahir: teksAman(p.tempat_lahir), tanggal_lahir: teksAman(p.tanggal_lahir).slice(0, 10),
+  jenis_kelamin: teksAman(p.jenis_kelamin), alamat: teksAman(p.alamat),
+  no_whatsapp: teksAman(p.no_whatsapp).replace(/\D/g, ''), email: teksAman(p.email),
+})
+
+function formDariPrefill(p) {
+  const mulai = teksAman(p.periode_mulai).slice(0, 10)
+  const selesai = teksAman(p.periode_selesai).slice(0, 10)
+  // Periode & durasi lama tetap diisi; kalau tanggal mulai sudah lewat, form akan meminta diganti saat dikirim.
+  let durasi = ''
+  if (mulai && selesai) {
+    const hari = Math.round((new Date(selesai) - new Date(mulai)) / 86400000)
+    durasi = String(Math.max(1, Math.round(hari / 30)))
+  }
+  return {
+    ...awal,
+    ...orangDariPrefill(p),
+    periode_mulai: mulai,
+    periode_selesai: selesai,
+    durasi,
+    durasi_satuan: 'bulan',
+  }
+}
+
 export default function Pendaftaran() {
-  const [form, setForm] = useState(awal)
+  const prefill = useLocation().state?.prefill ?? null
+  const [form, setForm] = useState(() => (prefill ? formDariPrefill(prefill) : awal))
   const [formasi, setFormasi] = useState([])
   const [formasiGagal, setFormasiGagal] = useState(false)
   const [formasiMemuat, setFormasiMemuat] = useState(true)
-  const [bidangIds, setBidangIds] = useState([])
+  const [bidangIds, setBidangIds] = useState(() => (prefill?.bidang_magang_id ? [prefill.bidang_magang_id] : []))
   const [lainnya, setLainnya] = useState(false)
   const [lainnyaTeks, setLainnyaTeks] = useState('')
   const [files, setFiles] = useState({})
   const [setuju, setSetuju] = useState(false)
-  const [anggota, setAnggota] = useState([])
+  const [anggota, setAnggota] = useState(() =>
+    Array.isArray(prefill?.anggota) ? prefill.anggota.slice(0, MAKS_ANGGOTA).map(orangDariPrefill) : [])
   const [errors, setErrors] = useState({})
   const [pesan, setPesan] = useState('')
   const [kirim, setKirim] = useState(false)
@@ -519,6 +555,30 @@ export default function Pendaftaran() {
 
       <div className="relative mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
+          {prefill && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-sm">
+              <p className="font-bold">Perbaiki pendaftaran {prefill.nomor_pendaftaran}</p>
+              <p className="mt-0.5 text-xs text-amber-800/80">
+                Data lama sudah terisi otomatis. Sesuaikan dengan catatan di bawah, unggah ulang dokumen, lalu kirim.
+              </p>
+              {prefill.catatan && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-3 text-red-800">
+                  <p className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Catatan dari BKPSDM</p>
+                  <p className="mt-1 whitespace-pre-line text-sm font-medium">{prefill.catatan}</p>
+                </div>
+              )}
+              <p className="mt-3 text-xs text-amber-800/80">
+                Dokumen tidak bisa terisi otomatis, jadi unggah ulang semua berkas (terutama yang dicatat di atas).
+                Periksa juga jenjang pendidikan dan periode magang.
+              </p>
+              {prefill.periode_mulai && String(prefill.periode_mulai).slice(0, 10) < HARI_INI && (
+                <p className="mt-2 text-xs font-semibold text-red-700">
+                  Tanggal mulai magang yang lama sudah lewat. Ganti periode magang dengan tanggal baru.
+                </p>
+              )}
+            </div>
+          )}
+
           {(masalah.length > 0 || pesan) && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
               {masalah.length > 0 && (
@@ -589,7 +649,7 @@ export default function Pendaftaran() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Contoh: 081234567890">
-                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+                <input id="no_whatsapp" type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={form.no_whatsapp} onChange={(e) => setForm((f) => ({ ...f, no_whatsapp: e.target.value.replace(/\D/g, '') }))} required placeholder="Contoh: 081234567890" />
               </Field>
               <Field label="Email" htmlFor="email" error={err('email')}>
                 <input id="email" placeholder="Contoh: budi.santoso@email.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
