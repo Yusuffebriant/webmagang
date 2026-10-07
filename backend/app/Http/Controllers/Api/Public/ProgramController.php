@@ -18,7 +18,7 @@ class ProgramController extends Controller
     public function bidang()
     {
         return BidangMagang::where('status', 'aktif')
-            ->withCount(['pendaftar as terisi' => fn ($q) => $q->where('status', 'diterima')])
+            ->denganTerisi()
             ->orderBy('nama_bidang')
             ->get()
             ->map(function ($b) {

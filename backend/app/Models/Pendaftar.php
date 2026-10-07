@@ -20,4 +20,5 @@ class Pendaftar extends Model
     public function program() { return $this->belongsTo(ProgramMagang::class, 'program_magang_id'); }
     public function bidang()  { return $this->belongsTo(BidangMagang::class, 'bidang_magang_id'); }
     public function dokumen() { return $this->hasMany(DokumenPendaftar::class, 'pendaftar_id'); }
+    public function anggota() { return $this->hasMany(AnggotaPendaftar::class, 'pendaftar_id'); }
 }
