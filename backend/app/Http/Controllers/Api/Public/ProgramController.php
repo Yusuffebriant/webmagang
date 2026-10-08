@@ -18,7 +18,21 @@ class ProgramController extends Controller
     public function bidang()
     {
         return BidangMagang::where('status', 'aktif')
+            ->withCount(['pendaftar as terisi' => fn ($q) => $q->where('status', 'diterima')])
             ->orderBy('nama_bidang')
-            ->get(['id', 'nama_bidang', 'deskripsi']);
+            ->get()
+            ->map(function ($b) {
+                $kuota = $b->kuota === null ? null : (int) $b->kuota;
+
+                return [
+                    'id'          => $b->id,
+                    'nama_bidang' => $b->nama_bidang,
+                    'deskripsi'   => $b->deskripsi,
+                    'kuota'       => $kuota,                                        // null = belum diatur
+                    'terisi'      => (int) $b->terisi,
+                    'sisa_kuota'  => $kuota === null ? null : max($kuota - (int) $b->terisi, 0),
+                ];
+            })
+            ->values();
     }
 }

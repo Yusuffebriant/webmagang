@@ -32,6 +32,11 @@ class PendaftarResource extends JsonResource
             'status'            => $this->status->value,
             'status_label'      => $this->status->label(),
             'catatan'           => $this->catatan,
+            'loa_tersedia'      => filled($this->loa_file),
+            'loa_url'           => $this->when(
+                $request->user('sanctum') && filled($this->loa_file),
+                fn () => asset('storage/' . $this->loa_file)
+            ),
             'dokumen'           => DokumenPendaftarResource::collection($this->whenLoaded('dokumen')),
             'created_at'        => $this->created_at?->format('Y-m-d H:i'),
         ];

@@ -16,7 +16,8 @@
   --font-script: "Caveat", cursive;
 }
 
-html { scroll-behavior: smooth; }
+/* Skala dasar 80%: 1rem = 12.8px, sehingga zoom browser 100% tampil seperti 80% */
+html { font-size: 80%; scroll-behavior: smooth; }
 html, body { overflow-x: clip; }
 body { color: #334155; -webkit-font-smoothing: antialiased; }
 h1, h2 { letter-spacing: 0; }

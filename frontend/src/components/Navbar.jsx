@@ -2,11 +2,13 @@ import { useEffect, useRef, useState } from 'react'
 import { Link, NavLink, useLocation } from 'react-router-dom'
 import Logo from './Logo'
 import Icon from './Icon'
+import { sesiMasihValid } from '../api/session'
 
 export const navLinks = [
   { label: 'Beranda', to: '/', end: true },
   { label: 'Tentang Instansi', href: '/#tentang' },
   { label: 'Program Magang', href: '/#program' },
+  { label: 'Info Kuota Formasi', to: '/info-kuota' },
   { label: 'Pendaftaran', to: '/pendaftaran' },
   { label: 'Cek Status', to: '/cek-status' },
 ]
@@ -30,13 +32,14 @@ function sectionTop(el) {
   return top - SECTION_OFFSET
 }
 
-const base = 'rounded-full px-3.5 py-2 text-sm font-medium whitespace-nowrap transition-colors'
+const base = 'rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors'
 const idle = 'text-slate-300 hover:text-white'
 const active = 'bg-white/10 text-white'
 
 // Navbar kapsul melayang: menempel di atas layar, kaca gelap transparan.
 // Saat halaman sedang di-scroll (naik/turun) navbar bergeser keluar ke atas layar;
 // berhenti scroll -> turun kembali ke posisi normal.
+// Enam menu cukup panjang, jadi menu lengkap baru tampil mulai layar xl; di bawahnya memakai tombol menu.
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   const [scrolled, setScrolled] = useState(false)
@@ -81,6 +84,10 @@ export default function Navbar() {
     return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2) }
   }, [key, pathname, hash])
 
+  const adaSesi = sesiMasihValid()
+  const labelAdmin = adaSesi ? 'Dashboard Admin' : 'Login Admin'
+  const tujuanAdmin = adaSesi ? '/admin' : '/admin/login'
+
   return (
     <header className="nav-drop fixed inset-x-0 top-3 z-50 px-4 font-geist md:top-4">
       <div
@@ -92,7 +99,7 @@ export default function Navbar() {
       >
         <Link to="/" aria-label="Beranda BKPSDM" className="shrink-0"><Logo light compact /></Link>
 
-        <nav className="hidden items-center gap-1 lg:flex" aria-label="Menu utama">
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Menu utama">
           {navLinks.map((l) =>
             l.to ? (
               <NavLink key={l.label} to={l.to} end={l.end}
@@ -105,29 +112,29 @@ export default function Navbar() {
           )}
         </nav>
 
-        <Link to="/admin/login"
-          className="hidden items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 lg:inline-flex">
-          <Icon name="user" className="h-4 w-4" /> Login Admin
+        <Link to={tujuanAdmin}
+          className="hidden shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 xl:inline-flex">
+          <Icon name="user" className="h-4 w-4" /> {labelAdmin}
         </Link>
 
         <button type="button" onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 lg:hidden"
+          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 xl:hidden"
           aria-label="Buka menu" aria-expanded={open}>
           <Icon name={open ? 'close' : 'menu'} className="h-5 w-5" />
         </button>
       </div>
 
       {open && (
-        <nav className="mx-auto mt-2 max-w-6xl rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl lg:hidden" aria-label="Menu seluler">
+        <nav className="mx-auto mt-2 max-w-6xl rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
           {navLinks.map((l) => (
             <Link key={l.label} to={l.href ?? l.to} onClick={() => setOpen(false)}
               className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white">
               {l.label}
             </Link>
           ))}
-          <Link to="/admin/login" onClick={() => setOpen(false)}
+          <Link to={tujuanAdmin} onClick={() => setOpen(false)}
             className="mt-1 flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-semibold text-brand-900">
-            <Icon name="user" className="h-4 w-4" /> Login Admin
+            <Icon name="user" className="h-4 w-4" /> {labelAdmin}
           </Link>
         </nav>
       )}

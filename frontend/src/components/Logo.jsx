@@ -15,7 +15,7 @@ export default function Logo({ light = false, compact = false }) {
       <SafeImage src="/logo-bkpsdm.png" alt="Logo BKPSDM" className={`${size} object-contain`} fallback={<Shield className={size} />} />
       <div className="leading-tight">
         <div className={`${compact ? 'text-lg' : 'text-2xl'} font-extrabold tracking-tight ${light ? 'text-white' : 'text-brand-900'}`}>BKPSDM</div>
-        <div className={`${compact ? 'hidden sm:block text-[10px]' : 'text-xs'} ${light ? 'text-slate-300' : 'text-slate-500'}`}>Kota Yogyakarta</div>
+        <div className={`${compact ? 'hidden sm:block text-[0.625rem]' : 'text-xs'} ${light ? 'text-slate-300' : 'text-slate-500'}`}>Kota Yogyakarta</div>
       </div>
     </div>
   )
