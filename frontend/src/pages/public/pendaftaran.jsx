@@ -4,7 +4,7 @@ import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import Logo from '../../components/Logo'
 import { unduhBuktiPendaftaran } from '../../utils/buktiPendaftaran'
-import { statusKuota, teksKuota } from '../../utils/kuota'
+import { statusKuota } from '../../utils/kuota'
 
 // true  = cocokkan dengan backend LAMA (butuh NIK, semester, program, 1 formasi, dokumen[]).
 // false = setelah backend diperbarui sesuai formulir baru -> NIK & semester tidak ditampilkan lagi.
@@ -115,19 +115,84 @@ const TEMA = {
   },
 }
 
+const NOMOR_LANGKAH = { pribadi: 1, magang: 2, anggota: 3, dokumen: 4, pernyataan: 5 }
+
 function Section({ judul, icon, tema = 'pribadi', children }) {
   const t = TEMA[tema]
   return (
-    <section className={`relative overflow-hidden rounded-2xl border shadow-sm ${t.root}`}>
+    <section id={`bagian-${tema}`} className={`relative scroll-mt-24 overflow-hidden rounded-2xl border shadow-sm ${t.root}`}>
       <div aria-hidden="true" className={`pointer-events-none ${t.deco}`} />
       <div className={`relative flex items-center gap-3 px-6 py-4 sm:px-8 ${t.head}`}>
         <span className={`flex h-10 w-10 items-center justify-center rounded-xl text-white shadow-sm ${t.ikon}`}>
           <Icon name={icon} className="h-5 w-5" />
         </span>
-        <h2 className={`text-base font-bold ${t.judul}`}>{judul}</h2>
+        <div>
+          <p className={`text-[11px] font-semibold tracking-wider uppercase ${tema === 'pernyataan' ? 'text-white/60' : 'text-slate-400'}`}>
+            Langkah {NOMOR_LANGKAH[tema]} dari 5
+          </p>
+          <h2 className={`text-base leading-tight font-bold ${t.judul}`}>{judul}</h2>
+        </div>
       </div>
       <div className="relative space-y-5 px-6 py-6 sm:px-8 sm:py-7">{children}</div>
     </section>
+  )
+}
+
+function lompatBagian(tema) {
+  document.getElementById(`bagian-${tema}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// Daftar langkah di samping form (layar lebar). Menandai bagian yang sedang dilihat.
+function StepSamping({ langkah, aktif }) {
+  const idxAktif = langkah.findIndex((l) => l.tema === aktif)
+  return (
+    <nav aria-label="Langkah pendaftaran" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">Langkah Pendaftaran</p>
+      <ol className="mt-4">
+        {langkah.map((l, i) => {
+          const sekarang = l.tema === aktif
+          const lewat = i < idxAktif
+          return (
+            <li key={l.tema} className="relative pb-5 last:pb-0">
+              {i < langkah.length - 1 && (
+                <span aria-hidden="true" className={`absolute top-8 left-[15px] h-[calc(100%-2rem)] w-0.5 ${lewat ? 'bg-brand-500' : 'bg-slate-200'}`} />
+              )}
+              <button type="button" onClick={() => lompatBagian(l.tema)} aria-current={sekarang ? 'step' : undefined}
+                className="group flex w-full items-start gap-3 text-left">
+                <span className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition ${sekarang ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30 ring-4 ring-brand-100' : lewat ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-brand-50 group-hover:text-brand-600'}`}>
+                  {lewat ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
+                  ) : i + 1}
+                </span>
+                <span className="min-w-0 pt-0.5">
+                  <span className={`block text-sm leading-tight font-semibold ${sekarang ? 'text-brand-900' : 'text-slate-600 group-hover:text-brand-600'}`}>{l.label}</span>
+                  <span className="mt-0.5 block text-xs text-slate-400">{l.ket}</span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
+
+// Versi ringkas untuk layar kecil: deretan chip yang bisa digeser.
+function StepMobile({ langkah, aktif }) {
+  return (
+    <nav aria-label="Langkah pendaftaran" className="-mx-4 mb-5 overflow-x-auto px-4 pb-1 lg:hidden">
+      <ol className="flex gap-2">
+        {langkah.map((l, i) => (
+          <li key={l.tema}>
+            <button type="button" onClick={() => lompatBagian(l.tema)}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${l.tema === aktif ? 'border-brand-500 bg-brand-500 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${l.tema === aktif ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</span>
+              {l.label}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
   )
 }
 
@@ -224,32 +289,15 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
         )}
 
         <Field label="Bidang Magang" htmlFor={id('bidang_magang_id')} error={k('bidang_magang_id')} required={false}
-          hint="Pilih salah satu. Boleh berbeda dari ketua. Kuota dihitung per orang di bidang yang dipilih.">
-          <div id={id('bidang_magang_id')} role="radiogroup" className="grid gap-2.5 sm:grid-cols-2">
-            <label className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition sm:col-span-2 ${data.bidang_magang_id === '' ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
-              <input type="radio" name={id('bidang')} checked={data.bidang_magang_id === ''} onChange={() => ubah(i, 'bidang_magang_id', '')} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500" />
-              <span className="text-slate-700">{bidangKetua ? `Sama dengan ketua (${bidangKetua})` : 'Sama dengan ketua'}</span>
-            </label>
-            {formasi.map((f) => {
-              const st = statusKuota(f)
-              const aktif = String(data.bidang_magang_id) === String(f.id)
-              const kunci = !st.bisaDipilih
-              return (
-                <label key={f.id} className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${kunci ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-70' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
-                  <input type="radio" name={id('bidang')} checked={aktif && !kunci} disabled={kunci} onChange={() => ubah(i, 'bidang_magang_id', String(f.id))} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
-                  <span className="min-w-0 flex-1">
-                    <span className="flex items-start justify-between gap-2">
-                      <span className={kunci ? 'text-slate-500' : 'text-slate-700'}>{f.nama_bidang}</span>
-                      {st.kode !== 'tersedia' && st.kode !== 'belum' && (
-                        <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.badge}`}>{st.label}</span>
-                      )}
-                    </span>
-                    <span className={`mt-0.5 block text-xs ${st.kode === 'hampir' ? 'font-semibold text-amber-600' : 'text-slate-500'}`}>{teksKuota(f)}</span>
-                  </span>
-                </label>
-              )
-            })}
-          </div>
+          hint="Boleh berbeda dari ketua. Kuota dihitung per orang di bidang yang dipilih.">
+          <select id={id('bidang_magang_id')} className={inputCls} value={data.bidang_magang_id} onChange={set('bidang_magang_id')}>
+            <option value="">{bidangKetua ? `Sama dengan ketua (${bidangKetua})` : 'Sama dengan ketua'}</option>
+            {formasi.map((f) => (
+              <option key={f.id} value={f.id} disabled={['penuh', 'tutup'].includes(statusKuota(f).kode)}>
+                {f.nama_bidang}{f.kuota === null ? '' : f.kuota === 0 ? ' — ditutup' : f.sisa_kuota === 0 ? ' — penuh' : ` — sisa ${f.sisa_kuota}`}
+              </option>
+            ))}
+          </select>
         </Field>
 
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
@@ -318,13 +366,36 @@ export default function Pendaftaran() {
   const [pdfGagal, setPdfGagal] = useState(false)
   const [programId, setProgramId] = useState(null)
   const formRef = useRef(null)
+  const [bagianAktif, setBagianAktif] = useState('pribadi')
+
+  useEffect(() => {
+    const els = Object.keys(NOMOR_LANGKAH).map((t) => document.getElementById(`bagian-${t}`)).filter(Boolean)
+    if (!els.length || !('IntersectionObserver' in window)) return undefined
+    const io = new IntersectionObserver(
+      (entries) => {
+        const tampak = entries.filter((e) => e.isIntersecting)
+        if (tampak.length) setBagianAktif(tampak[0].target.id.replace('bagian-', ''))
+      },
+      { rootMargin: '-25% 0px -60% 0px' },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [hasil])
+
+  const langkah = [
+    { tema: 'pribadi', label: anggota.length > 0 ? 'Data Ketua' : 'Data Pribadi', ket: 'Identitas dan pendidikan' },
+    { tema: 'magang', label: 'Data Magang', ket: 'Periode dan formasi' },
+    { tema: 'anggota', label: 'Anggota Kelompok', ket: 'Opsional' },
+    { tema: 'dokumen', label: 'Dokumen', ket: 'Unggah berkas pendukung' },
+    { tema: 'pernyataan', label: 'Pernyataan', ket: 'Konfirmasi dan kirim' },
+  ]
 
   const muatFormasi = () => {
     setFormasiMemuat(true)
     setFormasiGagal(false)
     return api.get('/public/bidang')
       .then((r) => setFormasi(r.data))
-      .catch((e) => { console.error('Gagal memuat formasi:', e.response?.status, e.response?.data ?? e.message); setFormasiGagal(true) })
+      .catch(() => setFormasiGagal(true))
       .finally(() => setFormasiMemuat(false))
   }
 
@@ -498,7 +569,7 @@ export default function Pendaftaran() {
 
   // ---------- Formulir ----------
   return (
-    <div className="relative overflow-hidden bg-slate-50 pb-16">
+    <div className="relative overflow-x-clip bg-slate-50 pb-16">
       <div aria-hidden="true" className="pointer-events-none absolute top-[28rem] -left-32 h-96 w-96 rounded-full bg-brand-200/40 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute top-[70rem] -right-32 h-96 w-96 rounded-full bg-brand-100/80 blur-3xl" />
       <div aria-hidden="true" className="pointer-events-none absolute bottom-24 -left-24 h-80 w-80 rounded-full bg-brand-200/30 blur-3xl" />
@@ -515,9 +586,30 @@ export default function Pendaftaran() {
         <p className="relative mx-auto mt-3 max-w-xl text-sm leading-relaxed text-slate-200">
           Isi formulir ini dengan data yang sebenar-benarnya. Data Anda akan digunakan hanya untuk keperluan administrasi magang dan dijamin kerahasiaannya.
         </p>
+        <ul className="relative mt-6 hidden flex-wrap items-center justify-center gap-2.5 text-xs font-semibold text-white sm:flex">
+          {[['fileText', '5 langkah pendaftaran'], ['shieldCheck', 'Data dijamin kerahasiaannya'], ['clock', 'Pantau status dengan nomor pendaftaran']].map(([ikon, teks]) => (
+            <li key={teks} className="inline-flex items-center gap-1.5 rounded-full bg-white/10 px-3.5 py-1.5 ring-1 ring-white/20 backdrop-blur">
+              <Icon name={ikon} className="h-3.5 w-3.5" /> {teks}
+            </li>
+          ))}
+        </ul>
       </div>
 
-      <div className="relative mx-auto -mt-14 max-w-3xl px-4 sm:px-6">
+      <div className="relative mx-auto -mt-14 max-w-6xl px-4 sm:px-6">
+        <div className="lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start lg:gap-8">
+        <aside className="hidden space-y-4 lg:sticky lg:top-24 lg:block">
+          <StepSamping langkah={langkah} aktif={bagianAktif} />
+          <Link to="/info-kuota"
+            className="group block rounded-2xl border border-brand-100 bg-gradient-to-br from-brand-50 to-white p-5 shadow-sm transition hover:border-brand-500">
+            <span className="flex h-9 w-9 items-center justify-center rounded-lg bg-brand-500 text-white"><Icon name="target" className="h-4.5 w-4.5" /></span>
+            <p className="mt-3 text-sm font-bold text-brand-900">Cek kuota formasi</p>
+            <p className="mt-0.5 text-xs leading-relaxed text-slate-500">Lihat formasi mana yang masih tersedia sebelum mengisi.</p>
+            <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-500 group-hover:gap-2">Buka info kuota <Icon name="arrowRight" className="h-3.5 w-3.5" /></span>
+          </Link>
+        </aside>
+
+        <div className="min-w-0">
+        <StepMobile langkah={langkah} aktif={bagianAktif} />
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
           {(masalah.length > 0 || pesan) && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
@@ -633,25 +725,43 @@ export default function Pendaftaran() {
 
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {formasi.map((f) => {
-                  const st = statusKuota(f)
                   const aktif = bidangIds.includes(f.id)
-                  const kunci = !st.bisaDipilih
+                  const s = statusKuota(f)
+                  const diatur = f.kuota !== null && f.kuota > 0
+                  const habis = s.kode === 'penuh' || s.kode === 'tutup'
+                  const terkunci = habis && !aktif // formasi penuh/ditutup tidak bisa dipilih
                   return (
-                    <label key={f.id} className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${kunci ? 'cursor-not-allowed border-slate-200 bg-slate-100 opacity-70' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
-                      <input type="checkbox" checked={aktif && !kunci} disabled={kunci} onChange={() => toggleBidang(f.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
-                      <span className="min-w-0 flex-1">
-                        <span className="flex items-start justify-between gap-2">
-                          <span className={kunci ? 'text-slate-500' : 'text-slate-700'}>{f.nama_bidang}</span>
-                          {st.kode !== 'tersedia' && st.kode !== 'belum' && (
-                            <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${st.badge}`}>{st.label}</span>
+                    <label key={f.id} aria-disabled={terkunci}
+                      className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${terkunci ? 'cursor-not-allowed border-slate-200 bg-slate-50' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
+                      <input type="checkbox" checked={aktif} disabled={terkunci} onChange={() => toggleBidang(f.id)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`font-medium ${terkunci ? 'text-slate-400' : 'text-slate-700'}`}>{f.nama_bidang}</span>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.badge}`}>{s.label}</span>
+                        </div>
+                        <p className={`mt-1 text-xs ${terkunci ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {diatur && !habis && (
+                            <>
+                              Sisa <span className={`font-semibold tabular-nums ${s.kode === 'hampir' ? 'text-amber-700' : 'text-slate-700'}`}>{f.sisa_kuota}</span> dari {f.kuota} kuota
+                            </>
                           )}
-                        </span>
-                        <span className={`mt-0.5 block text-xs ${st.kode === 'hampir' ? 'font-semibold text-amber-600' : 'text-slate-500'}`}>{teksKuota(f)}</span>
-                      </span>
+                          {s.kode === 'penuh' && `Kuota ${f.kuota} sudah terisi semua`}
+                          {s.kode === 'tutup' && 'Formasi sedang ditutup'}
+                          {s.kode === 'belum' && 'Kuota belum ditetapkan'}
+                        </p>
+                      </div>
                     </label>
                   )
                 })}
               </div>
+
+              {formasi.length > 0 && (
+                <p className="mt-2.5 text-xs text-slate-500">
+                  Kuota dihitung per orang dan dapat berubah sewaktu-waktu.{' '}
+                  <a href="/info-kuota" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-500 hover:underline">Lihat info kuota lengkap</a>
+                </p>
+              )}
 
               <div className={`mt-2.5 rounded-lg border px-3.5 py-3 transition ${lainnya ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
@@ -719,14 +829,24 @@ export default function Pendaftaran() {
             </div>
           </Section>
 
-          <button
-            type="submit"
-            disabled={kirim}
-            className="inline-flex w-full items-center justify-center gap-2 rounded-xl bg-brand-500 px-6 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {kirim ? 'Mengirim…' : (<>Kirim Pendaftaran <Icon name="arrowRight" className="h-4 w-4" /></>)}
-          </button>
+          <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-white p-5 shadow-sm sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="text-sm font-bold text-brand-900">Siap mengirim pendaftaran?</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                Setelah terkirim, Anda mendapat nomor pendaftaran dan bukti pendaftaran (PDF).
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={kirim}
+              className="inline-flex shrink-0 items-center justify-center gap-2 rounded-xl bg-brand-500 px-7 py-3.5 text-sm font-bold text-white shadow-lg shadow-brand-500/30 transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {kirim ? 'Mengirim…' : (<>Kirim Pendaftaran <Icon name="arrowRight" className="h-4 w-4" /></>)}
+            </button>
+          </div>
         </form>
+        </div>
+        </div>
       </div>
     </div>
   )
