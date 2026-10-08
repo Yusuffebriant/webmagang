@@ -9,6 +9,7 @@ import { Container, Eyebrow, FOTO_HERO, Reveal, Sticker, useHeroZoom } from '../
 // Foto: taruh di public/images/ (hero-bkpsdm.jpg, gedung-bkpsdm.jpg, laptop.jpg). Kalau belum ada, tampil gradien.
 const FOTO_GEDUNG = '/images/tentang-instansi.jpg'
 const FOTO_MAHASISWI = '/images/mahasiswi-bingung.png'
+const FOTO_DUO = '/images/duo-asn-mahasiswi.png'
 
 const BIDANG_DEFAULT = [
   'Pendamping Teknis Pranata Komputer',
@@ -348,20 +349,24 @@ export default function Beranda() {
       </Slide>
 
       {/* CTA (versi ringkas) */}
-      <Slide no="05" className="bg-white pt-10 pb-24">
-        <Container>
-          <Reveal className="mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-xl bg-brand-900 px-6 py-5 sm:flex-row sm:items-center">
-            <span className="float-y flex h-11 w-11 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
-              <Icon name="cap" className="h-5 w-5" />
+      <Slide no="05" className="flex min-h-[30rem] flex-col justify-end bg-white pt-10 pb-[4.5rem] md:min-h-[38rem] md:pb-28">
+        {/* Gambar berdiri di dasar section, di tengah, lapisan paling bawah, tanpa animasi sendiri (seperti gambar di section 3). Dasar gambar menempel di dasar section (bottom-0); bagian bawahnya tertutup map footer */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
+          <img src={FOTO_DUO} alt="" className="absolute bottom-0 left-1/2 h-[28rem] w-auto max-w-none md:h-[36rem] -translate-x-1/2 drop-shadow-[0_10px_18px_rgba(0,0,0,0.15)]" />
+        </div>
+        <Container className="relative z-10">
+          <Reveal className="relative z-10 mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-xl bg-brand-900 px-6 py-5 sm:flex-row sm:items-center md:h-32 md:gap-5 md:px-8">
+            <span className="float-y flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
+              <Icon name="cap" className="h-6 w-6" />
             </span>
             <div className="flex-1">
-              <h2 className="text-lg font-semibold text-white">Siap Menjadi Bagian dari Kami?</h2>
-              <p className="mt-0.5 text-sm text-slate-300">
+              <h2 className="text-xl font-semibold text-white">Siap Menjadi Bagian dari Kami?</h2>
+              <p className="mt-1 text-sm text-slate-300">
                 Daftarkan diri Anda sekarang dan raih pengalaman berharga bersama BKPSDM.
               </p>
             </div>
             <Link to="/pendaftaran"
-              className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-500 px-5 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600">
+              className="group inline-flex shrink-0 items-center gap-2 rounded-full bg-brand-500 px-6 py-3 text-sm font-semibold text-white transition hover:bg-brand-600">
               <Icon name="userPlus" className="h-4 w-4" /> Daftar Magang <Icon name="arrowRight" className="h-3.5 w-3.5 transition-transform duration-300 group-hover:translate-x-1" />
             </Link>
           </Reveal>
