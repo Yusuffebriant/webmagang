@@ -8,8 +8,8 @@ import { Container, Eyebrow, FOTO_HERO, Reveal, Sticker, useHeroZoom } from '../
 
 // Foto: taruh di public/images/ (hero-bkpsdm.jpg, gedung-bkpsdm.jpg, laptop.jpg). Kalau belum ada, tampil gradien.
 const FOTO_GEDUNG = '/images/tentang-instansi.jpg'
-const FOTO_MAHASISWI = '/images/mahasiswi-bingung.png'
-const FOTO_DUO = '/images/duo-asn-mahasiswi.png'
+const FOTO_MAHASISWI = '/images/mahasiswi-bingung.webp'
+const FOTO_DUO = '/images/duo-asn-mahasiswi.webp'
 
 const BIDANG_DEFAULT = [
   'Pendamping Teknis Pranata Komputer',
@@ -284,7 +284,7 @@ export default function Beranda() {
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden overflow-hidden rounded-[inherit] lg:block">
           <div className="relative mx-auto h-full max-w-7xl px-6">
             <div className="absolute right-6 bottom-0 h-[85%]">
-              <img src={FOTO_MAHASISWI} alt="" className="h-full w-auto drop-shadow-[0_10px_18px_rgba(0,0,0,0.12)]" />
+              <img src={FOTO_MAHASISWI} alt="" loading="lazy" decoding="async" className="h-full w-auto" />
               {/* awan pikiran */}
               <div className="absolute top-[3%] right-[82%] w-48 xl:w-56">
                 <div className="relative rounded-[2rem] border-[1.5px] border-brand-900 bg-white px-5 py-4 text-center shadow-[0_2px_20px_rgba(0,0,0,0.08)]">
@@ -352,7 +352,7 @@ export default function Beranda() {
       <Slide no="05" className="flex min-h-[30rem] flex-col justify-end bg-white pt-10 pb-[4.5rem] md:min-h-[38rem] md:pb-28">
         {/* Gambar berdiri di dasar section, di tengah, lapisan paling bawah, tanpa animasi sendiri (seperti gambar di section 3). Dasar gambar menempel di dasar section (bottom-0); bagian bawahnya tertutup map footer */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
-          <img src={FOTO_DUO} alt="" className="absolute bottom-0 left-1/2 h-[28rem] w-auto max-w-none md:h-[36rem] -translate-x-1/2 drop-shadow-[0_10px_18px_rgba(0,0,0,0.15)]" />
+          <img src={FOTO_DUO} alt="" loading="lazy" decoding="async" className="absolute bottom-0 left-1/2 h-[28rem] w-auto max-w-none md:h-[36rem] -translate-x-1/2" />
         </div>
         <Container className="relative z-10">
           <Reveal className="relative z-10 mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-xl bg-brand-900 px-6 py-5 sm:flex-row sm:items-center md:h-32 md:gap-5 md:px-8">

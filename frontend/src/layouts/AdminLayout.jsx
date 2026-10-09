@@ -110,7 +110,8 @@ export default function AdminLayout() {
     async (pesan) => {
       if (pesan) setNotice(pesan)
       await logout()
-      navigate('/admin/login', { replace: true })
+      // Logout manual -> beranda publik; keluar otomatis (idle) -> login agar pesannya terbaca.
+      navigate(pesan ? '/admin/login' : '/', { replace: true })
     },
     [navigate],
   )

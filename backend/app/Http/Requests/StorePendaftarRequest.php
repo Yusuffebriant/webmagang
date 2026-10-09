@@ -15,7 +15,7 @@ class StorePendaftarRequest extends FormRequest
     {
         return [
             'nama_lengkap'       => ['required', 'string', 'max:150'],
-            'nim'                => ['required', 'string', 'max:30'],
+            'nim'                => ['required', 'string', 'max:30', 'regex:/^[0-9]+$/'],
             'nik'                => ['required', 'digits:16'],
             'tempat_lahir'       => ['required', 'string', 'max:100'],
             'tanggal_lahir'      => ['required', 'date', 'before:today'],
@@ -32,6 +32,25 @@ class StorePendaftarRequest extends FormRequest
             'periode_mulai'      => ['required', 'date'],
             'periode_selesai'    => ['required', 'date', 'after:periode_mulai'],
 
+            // Anggota kelompok (opsional; kosong = mendaftar sendiri). Maks. 9 orang di luar ketua.
+            'anggota'                  => ['nullable', 'array', 'max:9'],
+            'anggota.*.nama_lengkap'   => ['required', 'string', 'max:150'],
+            'anggota.*.nim'            => ['required', 'string', 'max:30', 'regex:/^[0-9]+$/'],
+            'anggota.*.nik'            => ['required', 'digits:16'],
+            'anggota.*.tempat_lahir'   => ['required', 'string', 'max:100'],
+            'anggota.*.tanggal_lahir'  => ['required', 'date', 'before:today'],
+            'anggota.*.jenis_kelamin'  => ['required', 'in:L,P'],
+            'anggota.*.alamat'         => ['required', 'string'],
+            'anggota.*.no_whatsapp'    => ['required', 'string', 'max:20'],
+            'anggota.*.email'          => ['required', 'email', 'max:150'],
+            'anggota.*.universitas'    => ['required', 'string', 'max:150'],
+            'anggota.*.fakultas'       => ['nullable', 'string', 'max:150'],
+            'anggota.*.program_studi'  => ['required', 'string', 'max:150'],
+            'anggota.*.semester'       => ['required', 'integer', 'min:1', 'max:14'],
+            'anggota.*.jenjang'        => ['nullable', 'string', 'max:30'],
+            // Kosong = ikut bidang ketua
+            'anggota.*.bidang_magang_id' => ['nullable', 'integer', 'exists:bidang_magang,id'],
+
             'dokumen'                    => ['required', 'array', 'min:1'],
             'dokumen.*.jenis_dokumen'    => ['required', 'string', 'max:100'],
             'dokumen.*.file'             => ['required', 'file', 'mimes:pdf,jpg,jpeg,png', 'max:2048'],
@@ -41,7 +60,12 @@ class StorePendaftarRequest extends FormRequest
     public function messages(): array
     {
         return [
+            'nim.regex'                 => 'NIM hanya boleh berisi angka.',
+            'anggota.*.bidang_magang_id.exists' => 'Bidang magang anggota tidak valid.',
+            'anggota.*.nim.regex'       => 'NIM anggota hanya boleh berisi angka.',
             'nik.digits'                => 'NIK harus terdiri dari 16 digit angka.',
+            'anggota.*.nik.digits'      => 'NIK anggota harus terdiri dari 16 digit angka.',
+            'anggota.max'               => 'Anggota kelompok maksimal 9 orang di luar ketua.',
             'periode_selesai.after'     => 'Periode selesai harus setelah periode mulai.',
             'dokumen.*.file.max'        => 'Ukuran setiap file maksimal 2MB.',
             'dokumen.*.file.mimes'      => 'File harus berformat PDF, JPG, atau PNG.',

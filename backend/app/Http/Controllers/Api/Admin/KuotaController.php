@@ -7,6 +7,7 @@ use App\Http\Controllers\Controller;
 use App\Models\BidangMagang;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class KuotaController extends Controller
 {
@@ -50,7 +51,15 @@ class KuotaController extends Controller
 
     public function update(Request $request, BidangMagang $bidang)
     {
-        $request->validate([
+        // Kolom kuota dibuat oleh migrasi; tanpa itu nilai tidak mungkin tersimpan.
+        if (! Schema::hasColumn('bidang_magang', 'kuota')) {
+            return response()->json([
+                'message' => 'Kolom kuota belum ada di database. Jalankan: php artisan migrate',
+                'errors'  => ['kuota' => ['Kolom kuota belum ada di database. Jalankan: php artisan migrate']],
+            ], 500);
+        }
+
+        $data = $request->validate([
             'kuota' => ['present', 'nullable', 'integer', 'min:0', 'max:1000'],
         ], [
             'kuota.present' => 'Kuota wajib dikirim.',
@@ -59,22 +68,31 @@ class KuotaController extends Controller
             'kuota.max'     => 'Kuota maksimal 1000.',
         ]);
 
-        $kuota = $request->input('kuota');
+        $kuota = $data['kuota'] ?? null;
         $kuota = ($kuota === null || $kuota === '') ? null : (int) $kuota;
 
-        $terisi = $bidang->pendaftar()
-            ->where('status', StatusPendaftar::Diterima->value)
-            ->count();
+        $terisi = $bidang->hitungTerisi();
 
         if ($kuota !== null && $kuota < $terisi) {
-            $pesan = "Kuota tidak boleh lebih kecil dari jumlah pendaftar yang sudah diterima ({$terisi}).";
+            $pesan = "Kuota tidak boleh lebih kecil dari jumlah peserta yang sudah diterima ({$terisi}).";
 
             return response()->json(['message' => $pesan, 'errors' => ['kuota' => [$pesan]]], 422);
         }
 
-        $bidang->update(['kuota' => $kuota]);
+        $bidang->kuota = $kuota;
+        $bidang->save();
 
-        return ['data' => $this->format($this->query()->findOrFail($bidang->id))];
+        // Baca ulang dari database untuk memastikan nilai benar-benar tersimpan
+        $segar = $this->query()->findOrFail($bidang->id);
+        $tersimpan = $segar->kuota === null ? null : (int) $segar->kuota;
+
+        if ($tersimpan !== $kuota) {
+            $pesan = 'Kuota gagal tersimpan di database. Periksa struktur tabel bidang_magang.';
+
+            return response()->json(['message' => $pesan, 'errors' => ['kuota' => [$pesan]]], 500);
+        }
+
+        return ['data' => $this->format($segar)];
     }
 
     public function destroy(BidangMagang $bidang)
@@ -82,7 +100,7 @@ class KuotaController extends Controller
         $pesan = 'Bidang tidak dapat dihapus karena sudah memiliki pendaftar.';
         $tolak = fn () => response()->json(['message' => $pesan, 'errors' => ['bidang' => [$pesan]]], 422);
 
-        if ($bidang->pendaftar()->exists()) {
+        if ($bidang->pendaftar()->exists() || $bidang->anggota()->exists()) {
             return $tolak();
         }
 
@@ -98,10 +116,7 @@ class KuotaController extends Controller
 
     private function query()
     {
-        return BidangMagang::withCount([
-            'pendaftar as terisi' => fn ($q) => $q->where('status', StatusPendaftar::Diterima->value),
-            'pendaftar as total_pendaftar',
-        ]);
+        return BidangMagang::denganTerisi()->withCount('pendaftar as total_pendaftar');
     }
 
     private function format(BidangMagang $b): array

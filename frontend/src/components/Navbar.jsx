@@ -13,6 +13,9 @@ export const navLinks = [
   { label: 'Cek Status', to: '/cek-status' },
 ]
 
+// Menu navbar: tanpa 'Tentang Instansi' dan 'Program Magang' (footer tetap memakai navLinks lengkap).
+const navbarLinks = navLinks.filter((l) => l.href !== '/#tentang' && l.href !== '/#program')
+
 // Posisi (dari atas dokumen) tempat section berada saat tidak menempel.
 // Section di Beranda bersifat `position: sticky`, jadi getBoundingClientRect/scrollIntoView memberi posisi saat
 // menempel (sudah di layar) dan klik menu terasa "tidak bergerak". Posisi aslinya dihitung dari urutan section di dalam tumpukan.
@@ -39,25 +42,46 @@ const active = 'bg-white/10 text-white'
 // Navbar kapsul melayang: menempel di atas layar, kaca gelap transparan.
 // Saat halaman sedang di-scroll (naik/turun) navbar bergeser keluar ke atas layar;
 // berhenti scroll -> turun kembali ke posisi normal.
-// Enam menu cukup panjang, jadi menu lengkap baru tampil mulai layar xl; di bawahnya memakai tombol menu.
+// Empat menu cukup panjang, jadi menu lengkap baru tampil mulai layar xl; di bawahnya memakai tombol menu.
 export default function Navbar() {
   const [open, setOpen] = useState(false)
-  const [scrolled, setScrolled] = useState(false)
-  const [scrolling, setScrolling] = useState(false)
+  // Status scroll sengaja TIDAK disimpan di state React: setiap event scroll akan me-render ulang seluruh Navbar.
+  // Cukup ubah atribut/style elemen langsung lewat ref.
+  const barRef = useRef(null)
+  const sembunyi = useRef(false)
+  const bukaRef = useRef(false)
   const timer = useRef(null)
   const { pathname, hash, key } = useLocation()
   const prevPath = useRef(null)
-  // Sembunyi hanya saat scroll berlangsung, dan tidak saat menu seluler sedang dibuka.
-  const hidden = scrolling && !open
 
+  const atur = (h) => {
+    const bar = barRef.current
+    if (!bar || sembunyi.current === h) return
+    sembunyi.current = h
+    bar.style.transform = h ? 'translateY(-170%)' : 'translateY(0)'
+    bar.setAttribute('aria-hidden', String(h))
+  }
+
+  // Menu seluler terbuka -> navbar tidak boleh bersembunyi.
   useEffect(() => {
-    const onScroll = () => {
-      setScrolled(window.scrollY > 24)
-      setScrolling(true)
-      clearTimeout(timer.current)
-      timer.current = setTimeout(() => setScrolling(false), 200)
+    bukaRef.current = open
+    if (open) atur(false)
+  }, [open])
+
+  // Sembunyi hanya saat scroll berlangsung, dan tidak saat menu seluler sedang dibuka.
+  useEffect(() => {
+    const bar = barRef.current
+    const tandai = () => {
+      const v = String(window.scrollY > 24)
+      if (bar && bar.dataset.scrolled !== v) bar.dataset.scrolled = v
     }
-    setScrolled(window.scrollY > 24)
+    const onScroll = () => {
+      tandai()
+      if (!bukaRef.current) atur(true)
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => atur(false), 200)
+    }
+    tandai()
     window.addEventListener('scroll', onScroll, { passive: true })
     return () => {
       window.removeEventListener('scroll', onScroll)
@@ -91,16 +115,14 @@ export default function Navbar() {
   return (
     <header className="nav-drop fixed inset-x-0 top-3 z-50 px-4 font-geist md:top-4">
       <div
-        style={{ transform: hidden ? 'translateY(-170%)' : 'translateY(0)' }}
-        aria-hidden={hidden}
-        className={`mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2 pl-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-[transform,background-color] duration-300 ease-out ${
-          scrolled || open ? 'bg-brand-900/90' : 'bg-brand-900/60'
-        }`}
+        ref={barRef}
+        data-open={open}
+        className={`mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2 pl-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-[transform,background-color] duration-300 ease-out bg-brand-900/60 data-[open=true]:bg-brand-900/90 data-[scrolled=true]:bg-brand-900/90`}
       >
         <Link to="/" aria-label="Beranda BKPSDM" className="shrink-0"><Logo light compact /></Link>
 
         <nav className="hidden items-center gap-1 xl:flex" aria-label="Menu utama">
-          {navLinks.map((l) =>
+          {navbarLinks.map((l) =>
             l.to ? (
               <NavLink key={l.label} to={l.to} end={l.end}
                 className={({ isActive }) => `${base} ${isActive ? active : idle}`}>
@@ -126,7 +148,7 @@ export default function Navbar() {
 
       {open && (
         <nav className="mx-auto mt-2 max-w-6xl rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
-          {navLinks.map((l) => (
+          {navbarLinks.map((l) => (
             <Link key={l.label} to={l.href ?? l.to} onClick={() => setOpen(false)}
               className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white">
               {l.label}

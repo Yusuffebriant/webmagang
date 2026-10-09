@@ -6,6 +6,7 @@ use App\Enums\StatusPendaftar;
 use App\Exports\PendaftarExport;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PendaftarResource;
+use App\Models\BidangMagang;
 use App\Models\Pendaftar;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
@@ -15,7 +16,7 @@ class PendaftarController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Pendaftar::with('program', 'bidang')->latest();
+        $query = Pendaftar::with('program', 'bidang')->withCount('anggota')->latest();
 
         if ($request->filled('status')) {
             $query->where('status', $request->string('status'));
@@ -35,7 +36,7 @@ class PendaftarController extends Controller
 
     public function show(Pendaftar $pendaftar)
     {
-        return new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang'));
+        return new PendaftarResource($pendaftar->load('dokumen', 'program', 'bidang', 'anggota.bidang'));
     }
 
     public function updateStatus(Request $request, Pendaftar $pendaftar)
@@ -53,18 +54,44 @@ class PendaftarController extends Controller
             ], 422);
         }
 
-        // Kuota bidang: tolak jika sudah penuh (kuota NULL = tidak dibatasi)
+        // Kuota bidang dihitung per orang (ketua + tiap anggota di bidangnya masing-masing).
+        // Satu kelompok diterima sekaligus: semua bidang yang dipilih harus punya sisa kuota yang cukup.
+        // Kuota NULL = tidak dibatasi.
         if ($data['status'] === StatusPendaftar::Diterima->value && $pendaftar->status !== StatusPendaftar::Diterima) {
-            $bidang = $pendaftar->bidang;
+            $pendaftar->loadMissing('anggota');
+            $butuh = collect([$pendaftar->bidang_magang_id])
+                ->merge($pendaftar->anggota->pluck('bidang_magang_id'))
+                ->filter()
+                ->countBy();
 
-            if ($bidang && $bidang->kuota !== null) {
-                $terisi = $bidang->pendaftar()->where('status', StatusPendaftar::Diterima->value)->count();
+            $daftarBidang = BidangMagang::whereIn('id', $butuh->keys())->get()->keyBy('id');
+            $kurang = [];
 
-                if ($terisi >= (int) $bidang->kuota) {
-                    $pesan = "Kuota bidang {$bidang->nama_bidang} sudah penuh ({$terisi}/{$bidang->kuota}).";
+            foreach ($butuh as $idBidang => $jumlah) {
+                $bidang = $daftarBidang[$idBidang] ?? null;
 
-                    return response()->json(['message' => $pesan, 'errors' => ['status' => [$pesan]]], 422);
+                if (! $bidang || $bidang->kuota === null) {
+                    continue;
                 }
+
+                $terisi = $bidang->hitungTerisi();
+
+                if ($terisi + $jumlah > (int) $bidang->kuota) {
+                    $sisa = max((int) $bidang->kuota - $terisi, 0);
+                    $kurang[] = ['bidang' => $bidang, 'butuh' => $jumlah, 'sisa' => $sisa, 'terisi' => $terisi];
+                }
+            }
+
+            if ($kurang) {
+                if ($butuh->sum() === 1) {
+                    $k = $kurang[0];
+                    $pesan = "Kuota bidang {$k['bidang']->nama_bidang} sudah penuh ({$k['terisi']}/{$k['bidang']->kuota}).";
+                } else {
+                    $rincian = collect($kurang)->map(fn ($k) => "{$k['bidang']->nama_bidang} (butuh {$k['butuh']}, sisa {$k['sisa']} dari kuota {$k['bidang']->kuota})")->implode('; ');
+                    $pesan = "Kuota bidang belum cukup untuk menerima seluruh kelompok ini: {$rincian}. Tambah kuota bidang tersebut atau ubah bidang anggota terlebih dahulu.";
+                }
+
+                return response()->json(['message' => $pesan, 'errors' => ['status' => [$pesan]]], 422);
             }
         }
 

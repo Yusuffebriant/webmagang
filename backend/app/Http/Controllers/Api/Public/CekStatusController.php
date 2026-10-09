@@ -10,7 +10,13 @@ class CekStatusController extends Controller
 {
     public function show(string $nomor)
     {
-        $pendaftar = Pendaftar::with('program', 'bidang')
+        // 'anggota' hanya dimuat bila relasinya ada di model (versi backend dengan fitur kelompok).
+        $relasi = ['program', 'bidang'];
+        if (method_exists(Pendaftar::class, 'anggota')) {
+            $relasi[] = 'anggota';
+        }
+
+        $pendaftar = Pendaftar::with($relasi)
             ->where('nomor_pendaftaran', $nomor)
             ->first();
 

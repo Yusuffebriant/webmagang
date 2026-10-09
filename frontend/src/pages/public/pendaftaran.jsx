@@ -1,9 +1,10 @@
 import { useEffect, useRef, useState } from 'react'
-import { Link } from 'react-router-dom'
+import { Link, useLocation } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import { PageHero, Reveal, Sheet, Sticker } from '../../components/Motif'
 import { unduhBuktiPendaftaran } from '../../utils/buktiPendaftaran'
+import { statusKuota } from '../../utils/kuota'
 
 // true  = cocokkan dengan backend LAMA (butuh NIK, semester, program, 1 formasi, dokumen[]).
 // false = setelah backend diperbarui sesuai formulir baru -> NIK & semester tidak ditampilkan lagi.
@@ -25,6 +26,7 @@ const MAKS_ANGGOTA = 9 // anggota di luar ketua
 const anggotaKosong = () => ({
   nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '', jenjang: '',
   tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '', alamat: '', no_whatsapp: '', email: '',
+  bidang_magang_id: '', // kosong = sama dengan bidang ketua
 })
 
 const awal = {
@@ -40,7 +42,7 @@ const LABEL = {
   tanggal_lahir: 'Tanggal Lahir', jenis_kelamin: 'Jenis Kelamin', alamat: 'Alamat Domisili',
   no_whatsapp: 'Nomor HP', email: 'Email', periode_mulai: 'Periode Magang Mulai',
   periode_selesai: 'Periode Magang Selesai', durasi: 'Durasi Magang', durasi_satuan: 'Satuan Durasi',
-  bidang: 'Minat Formasi Magang', surat_pengantar: 'Surat Pengantar', cv: 'CV',
+  bidang: 'Minat Formasi Magang', bidang_magang_id: 'Bidang Magang', surat_pengantar: 'Surat Pengantar', cv: 'CV',
   transkrip: 'Transkrip / KHS', rencana_kegiatan: 'Rencana Kegiatan', pernyataan: 'Pernyataan',
   anggota: 'Anggota Kelompok', nik: 'NIK', semester: 'Semester', program_magang_id: 'Program Magang',
 }
@@ -84,21 +86,81 @@ const TEMA = {
   pernyataan: { root: 'border-brand-900 bg-brand-900 text-white', head: 'border-b border-white/10', judul: 'text-white', ikon: 'bg-white/15 text-white', langkah: 'text-brand-200' },
 }
 
-function Section({ judul, icon, tema = 'pribadi', no, children }) {
+const NOMOR_LANGKAH = { pribadi: 1, magang: 2, anggota: 3, dokumen: 4, pernyataan: 5 }
+
+function Section({ judul, icon, tema = 'pribadi', children }) {
   const t = TEMA[tema]
   return (
-    <Reveal as="section" variant="up" className={`relative rounded-2xl border shadow-[0_2px_20px_rgba(0,0,0,0.06)] ${t.root}`}>
+    <Reveal as="section" id={`bagian-${tema}`} variant="up" className={`relative scroll-mt-24 rounded-2xl border shadow-[0_2px_20px_rgba(0,0,0,0.06)] ${t.root}`}>
       <div className={`flex items-center gap-4 px-6 py-5 sm:px-8 ${t.head}`}>
         <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${t.ikon}`}>
           <Icon name={icon} className="h-6 w-6" />
         </span>
         <div>
-          {no && <p className={`-rotate-1 origin-left font-script text-xl leading-none ${t.langkah}`}>Langkah {no}</p>}
+          <p className={`-rotate-1 origin-left font-script text-xl leading-none ${t.langkah}`}>Langkah {NOMOR_LANGKAH[tema]} dari 5</p>
           <h2 className={`text-xl font-semibold ${t.judul}`}>{judul}</h2>
         </div>
       </div>
       <div className="space-y-5 px-6 py-6 sm:px-8 sm:py-7">{children}</div>
     </Reveal>
+  )
+}
+
+function lompatBagian(tema) {
+  document.getElementById(`bagian-${tema}`)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+}
+
+// Daftar langkah di samping form (layar lebar). Menandai bagian yang sedang dilihat.
+function StepSamping({ langkah, aktif }) {
+  const idxAktif = langkah.findIndex((l) => l.tema === aktif)
+  return (
+    <nav aria-label="Langkah pendaftaran" className="rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+      <p className="text-xs font-bold tracking-wider text-slate-400 uppercase">Langkah Pendaftaran</p>
+      <ol className="mt-4">
+        {langkah.map((l, i) => {
+          const sekarang = l.tema === aktif
+          const lewat = i < idxAktif
+          return (
+            <li key={l.tema} className="relative pb-5 last:pb-0">
+              {i < langkah.length - 1 && (
+                <span aria-hidden="true" className={`absolute top-8 left-[15px] h-[calc(100%-2rem)] w-0.5 ${lewat ? 'bg-brand-500' : 'bg-slate-200'}`} />
+              )}
+              <button type="button" onClick={() => lompatBagian(l.tema)} aria-current={sekarang ? 'step' : undefined}
+                className="group flex w-full items-start gap-3 text-left">
+                <span className={`relative flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition ${sekarang ? 'bg-brand-500 text-white shadow-md shadow-brand-500/30 ring-4 ring-brand-100' : lewat ? 'bg-brand-500 text-white' : 'bg-slate-100 text-slate-500 group-hover:bg-brand-50 group-hover:text-brand-600'}`}>
+                  {lewat ? (
+                    <svg viewBox="0 0 24 24" className="h-4 w-4" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg>
+                  ) : i + 1}
+                </span>
+                <span className="min-w-0 pt-0.5">
+                  <span className={`block text-sm leading-tight font-semibold ${sekarang ? 'text-brand-900' : 'text-slate-600 group-hover:text-brand-600'}`}>{l.label}</span>
+                  <span className="mt-0.5 block text-xs text-slate-400">{l.ket}</span>
+                </span>
+              </button>
+            </li>
+          )
+        })}
+      </ol>
+    </nav>
+  )
+}
+
+// Versi ringkas untuk layar kecil: deretan chip yang bisa digeser.
+function StepMobile({ langkah, aktif }) {
+  return (
+    <nav aria-label="Langkah pendaftaran" className="-mx-4 mb-5 overflow-x-auto px-4 pb-1 lg:hidden">
+      <ol className="flex gap-2">
+        {langkah.map((l, i) => (
+          <li key={l.tema}>
+            <button type="button" onClick={() => lompatBagian(l.tema)}
+              className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${l.tema === aktif ? 'border-brand-500 bg-brand-500 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${l.tema === aktif ? 'bg-white/20' : 'bg-slate-100'}`}>{i + 1}</span>
+              {l.label}
+            </button>
+          </li>
+        ))}
+      </ol>
+    </nav>
   )
 }
 
@@ -151,7 +213,7 @@ function PendidikanFields({ data, ubah, idp, err }) {
   )
 }
 
-function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
+function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidangKetua, err }) {
   const k = (f) => err(`anggota.${i}.${f}`)
   const set = (f) => (e) => ubah(i, f, e.target.value)
   const id = (f) => `anggota_${i}_${f}`
@@ -163,10 +225,6 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
       <div className="mb-4 flex items-center justify-between gap-3">
         <h3 className="text-sm font-bold text-brand-900">Anggota {i + 1}</h3>
         <div className="flex items-center gap-2">
-          <button type="button" onClick={() => salinKampus(i)}
-            className="rounded-lg border border-slate-300 bg-white px-3 py-1.5 text-xs font-semibold text-slate-600 hover:border-brand-500 hover:text-brand-500">
-            Samakan kampus dengan ketua
-          </button>
           <button type="button" onClick={() => hapus(i)}
             className="rounded-lg border border-red-200 bg-white px-3 py-1.5 text-xs font-semibold text-red-600 hover:bg-red-50">
             Hapus
@@ -179,8 +237,8 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
           <Field label="Nama Lengkap" htmlFor={id('nama_lengkap')} error={k('nama_lengkap')}>
             <input id={id('nama_lengkap')} placeholder="Contoh: Rina Wulandari" className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
           </Field>
-          <Field label="NIM" htmlFor={id('nim')} error={k('nim')}>
-            <input id={id('nim')} placeholder="Contoh: 21051235" className={inputCls} value={data.nim} onChange={set('nim')} required maxLength={30} />
+          <Field label="NIM" htmlFor={id('nim')} error={k('nim')} hint="Hanya angka">
+            <input id={id('nim')} placeholder="Contoh: 21051235" inputMode="numeric" pattern="[0-9]+" title="NIM hanya boleh berisi angka" className={inputCls} value={data.nim} onChange={(e) => ubah(i, 'nim', e.target.value.replace(/\D/g, ''))} required maxLength={30} />
           </Field>
         </div>
 
@@ -198,6 +256,26 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
           </div>
         )}
 
+        <Field label="Bidang Magang" htmlFor={id('bidang_magang_id')} error={k('bidang_magang_id')} required={false}
+          hint="Boleh berbeda dari ketua. Kuota dihitung per orang di bidang yang dipilih.">
+          <select id={id('bidang_magang_id')} className={inputCls} value={data.bidang_magang_id} onChange={set('bidang_magang_id')}>
+            <option value="">{bidangKetua ? `Sama dengan ketua (${bidangKetua})` : 'Sama dengan ketua'}</option>
+            {formasi.map((f) => (
+              <option key={f.id} value={f.id} disabled={['penuh', 'tutup'].includes(statusKuota(f).kode)}>
+                {f.nama_bidang}{f.kuota === null ? '' : f.kuota === 0 ? ' — ditutup' : f.sisa_kuota === 0 ? ' — penuh' : ` — sisa ${f.sisa_kuota}`}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
+          <p className="text-sm font-semibold text-brand-900">Data Pendidikan</p>
+          <button type="button" onClick={() => salinKampus(i)} disabled={!bisaSalin}
+            title={bisaSalin ? 'Isi jenjang, kampus, fakultas, dan prodi sama seperti ketua' : 'Lengkapi data pendidikan ketua terlebih dahulu'}
+            className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50">
+            Samakan dengan ketua
+          </button>
+        </div>
         <PendidikanFields data={data} ubah={(f, v) => ubah(i, f, v)} idp={`anggota_${i}_`} err={k} />
 
         <div className="grid gap-4 sm:grid-cols-2">
@@ -226,7 +304,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
 
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nomor HP (aktif & WhatsApp)" htmlFor={id('no_whatsapp')} error={k('no_whatsapp')}>
-            <input id={id('no_whatsapp')} type="tel" inputMode="tel" className={inputCls} value={data.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+            <input id={id('no_whatsapp')} type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={data.no_whatsapp} onChange={(e) => ubah(i, 'no_whatsapp', e.target.value.replace(/\D/g, ''))} required placeholder="Contoh: 081234567890" />
           </Field>
           <Field label="Email" htmlFor={id('email')} error={k('email')}>
             <input id={id('email')} placeholder="Contoh: rina.wulandari@email.com" type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
@@ -237,17 +315,53 @@ function Anggota({ i, data, ubah, hapus, salinKampus, err }) {
   )
 }
 
+// ---------- Isi otomatis dari pendaftaran lama (tombol "Perbaiki & Daftar Ulang") ----------
+const teksAman = (v) => (v == null ? '' : String(v))
+
+// Jenjang belum disimpan di backend lama: kalau fakultas "-" berarti sekolah, selain itu dianggap S1 (bisa diganti).
+const tebakJenjang = (p) => p.jenjang || (p.fakultas === '-' ? 'SMA/SMK' : 'S1')
+
+const orangDariPrefill = (p) => ({
+  nama_lengkap: teksAman(p.nama_lengkap), nim: teksAman(p.nim), nik: teksAman(p.nik), semester: teksAman(p.semester),
+  universitas: teksAman(p.universitas), fakultas: p.fakultas === '-' ? '' : teksAman(p.fakultas),
+  program_studi: teksAman(p.program_studi), jenjang: tebakJenjang(p),
+  tempat_lahir: teksAman(p.tempat_lahir), tanggal_lahir: teksAman(p.tanggal_lahir).slice(0, 10),
+  jenis_kelamin: teksAman(p.jenis_kelamin), alamat: teksAman(p.alamat),
+  no_whatsapp: teksAman(p.no_whatsapp).replace(/\D/g, ''), email: teksAman(p.email),
+})
+
+function formDariPrefill(p) {
+  const mulai = teksAman(p.periode_mulai).slice(0, 10)
+  const selesai = teksAman(p.periode_selesai).slice(0, 10)
+  // Periode & durasi lama tetap diisi; kalau tanggal mulai sudah lewat, form akan meminta diganti saat dikirim.
+  let durasi = ''
+  if (mulai && selesai) {
+    const hari = Math.round((new Date(selesai) - new Date(mulai)) / 86400000)
+    durasi = String(Math.max(1, Math.round(hari / 30)))
+  }
+  return {
+    ...awal,
+    ...orangDariPrefill(p),
+    periode_mulai: mulai,
+    periode_selesai: selesai,
+    durasi,
+    durasi_satuan: 'bulan',
+  }
+}
+
 export default function Pendaftaran() {
-  const [form, setForm] = useState(awal)
+  const prefill = useLocation().state?.prefill ?? null
+  const [form, setForm] = useState(() => (prefill ? formDariPrefill(prefill) : awal))
   const [formasi, setFormasi] = useState([])
   const [formasiGagal, setFormasiGagal] = useState(false)
   const [formasiMemuat, setFormasiMemuat] = useState(true)
-  const [bidangIds, setBidangIds] = useState([])
+  const [bidangIds, setBidangIds] = useState(() => (prefill?.bidang_magang_id ? [prefill.bidang_magang_id] : []))
   const [lainnya, setLainnya] = useState(false)
   const [lainnyaTeks, setLainnyaTeks] = useState('')
   const [files, setFiles] = useState({})
   const [setuju, setSetuju] = useState(false)
-  const [anggota, setAnggota] = useState([])
+  const [anggota, setAnggota] = useState(() =>
+    Array.isArray(prefill?.anggota) ? prefill.anggota.slice(0, MAKS_ANGGOTA).map(orangDariPrefill) : [])
   const [errors, setErrors] = useState({})
   const [pesan, setPesan] = useState('')
   const [kirim, setKirim] = useState(false)
@@ -256,6 +370,29 @@ export default function Pendaftaran() {
   const [pdfGagal, setPdfGagal] = useState(false)
   const [programId, setProgramId] = useState(null)
   const formRef = useRef(null)
+  const [bagianAktif, setBagianAktif] = useState('pribadi')
+
+  useEffect(() => {
+    const els = Object.keys(NOMOR_LANGKAH).map((t) => document.getElementById(`bagian-${t}`)).filter(Boolean)
+    if (!els.length || !('IntersectionObserver' in window)) return undefined
+    const io = new IntersectionObserver(
+      (entries) => {
+        const tampak = entries.filter((e) => e.isIntersecting)
+        if (tampak.length) setBagianAktif(tampak[0].target.id.replace('bagian-', ''))
+      },
+      { rootMargin: '-25% 0px -60% 0px' },
+    )
+    els.forEach((el) => io.observe(el))
+    return () => io.disconnect()
+  }, [hasil])
+
+  const langkah = [
+    { tema: 'pribadi', label: anggota.length > 0 ? 'Data Ketua' : 'Data Pribadi', ket: 'Identitas dan pendidikan' },
+    { tema: 'magang', label: 'Data Magang', ket: 'Periode dan formasi' },
+    { tema: 'anggota', label: 'Anggota Kelompok', ket: 'Opsional' },
+    { tema: 'dokumen', label: 'Dokumen', ket: 'Unggah berkas pendukung' },
+    { tema: 'pernyataan', label: 'Pernyataan', ket: 'Konfirmasi dan kirim' },
+  ]
 
   const muatFormasi = () => {
     setFormasiMemuat(true)
@@ -448,9 +585,47 @@ export default function Pendaftaran() {
         Isi formulir ini dengan data yang sebenar-benarnya. Data Anda akan digunakan hanya untuk keperluan administrasi magang dan dijamin kerahasiaannya.
       </PageHero>
 
-      <Sheet first max="max-w-3xl">
+      <Sheet first max="max-w-6xl">
         <Sticker kind="sparkle" rotate={12} className="-top-12 right-4" />
+        <div className="lg:grid lg:grid-cols-[250px_minmax(0,1fr)] lg:items-start lg:gap-8">
+          <aside className="hidden space-y-4 lg:sticky lg:top-24 lg:block">
+            <StepSamping langkah={langkah} aktif={bagianAktif} />
+            <Link to="/info-kuota"
+              className="group block rounded-2xl border border-brand-100 bg-brand-50 p-5 shadow-[0_2px_20px_rgba(0,0,0,0.06)] transition hover:border-brand-500">
+              <span className="flex h-10 w-10 items-center justify-center rounded-full bg-white text-brand-500"><Icon name="target" className="h-5 w-5" /></span>
+              <p className="mt-3 text-sm font-semibold text-brand-900">Cek kuota formasi</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">Lihat formasi mana yang masih tersedia sebelum mengisi.</p>
+              <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-500 group-hover:gap-2">Buka info kuota <Icon name="arrowRight" className="h-3.5 w-3.5" /></span>
+            </Link>
+          </aside>
+
+          <div className="min-w-0">
+            <StepMobile langkah={langkah} aktif={bagianAktif} />
         <form ref={formRef} onSubmit={submit} noValidate={false} className="space-y-6">
+          {prefill && (
+            <div className="rounded-xl border border-amber-300 bg-amber-50 px-5 py-4 text-sm text-amber-900 shadow-sm">
+              <p className="font-bold">Perbaiki pendaftaran {prefill.nomor_pendaftaran}</p>
+              <p className="mt-0.5 text-xs text-amber-800/80">
+                Data lama sudah terisi otomatis. Sesuaikan dengan catatan di bawah, unggah ulang dokumen, lalu kirim.
+              </p>
+              {prefill.catatan && (
+                <div className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-3 text-red-800">
+                  <p className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Catatan dari BKPSDM</p>
+                  <p className="mt-1 whitespace-pre-line text-sm font-medium">{prefill.catatan}</p>
+                </div>
+              )}
+              <p className="mt-3 text-xs text-amber-800/80">
+                Dokumen tidak bisa terisi otomatis, jadi unggah ulang semua berkas (terutama yang dicatat di atas).
+                Periksa juga jenjang pendidikan dan periode magang.
+              </p>
+              {prefill.periode_mulai && String(prefill.periode_mulai).slice(0, 10) < HARI_INI && (
+                <p className="mt-2 text-xs font-semibold text-red-700">
+                  Tanggal mulai magang yang lama sudah lewat. Ganti periode magang dengan tanggal baru.
+                </p>
+              )}
+            </div>
+          )}
+
           {(masalah.length > 0 || pesan) && (
             <div role="alert" className="rounded-xl border border-red-200 bg-red-50 px-5 py-4 text-sm text-red-700">
               {masalah.length > 0 && (
@@ -472,12 +647,12 @@ export default function Pendaftaran() {
           )}
 
           {/* DATA PRIBADI */}
-          <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user" tema="pribadi" no={1}>
+          <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user" tema="pribadi">
             <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
               <input id="nama_lengkap" placeholder="Contoh: Budi Santoso" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
             </Field>
-            <Field label="NIM" htmlFor="nim" error={err('nim')}>
-              <input id="nim" placeholder="Contoh: 21051234" className={inputCls} value={form.nim} onChange={set('nim')} required maxLength={30} />
+            <Field label="NIM" htmlFor="nim" error={err('nim')} hint="Hanya angka">
+              <input id="nim" placeholder="Contoh: 21051234" inputMode="numeric" pattern="[0-9]+" title="NIM hanya boleh berisi angka" className={inputCls} value={form.nim} onChange={(e) => setForm((f) => ({ ...f, nim: e.target.value.replace(/\D/g, '') }))} required maxLength={30} />
             </Field>
             {BACKEND_LAMA && (
               <div className="grid gap-5 sm:grid-cols-2">
@@ -521,7 +696,7 @@ export default function Pendaftaran() {
 
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Nomor HP (aktif & WhatsApp)" htmlFor="no_whatsapp" error={err('no_whatsapp')} hint="Contoh: 081234567890">
-                <input id="no_whatsapp" type="tel" inputMode="tel" className={inputCls} value={form.no_whatsapp} onChange={set('no_whatsapp')} required placeholder="Contoh: 081234567890" />
+                <input id="no_whatsapp" type="tel" inputMode="numeric" pattern="[0-9]{9,15}" maxLength={15} title="Nomor HP hanya boleh berisi angka (9-15 digit)" className={inputCls} value={form.no_whatsapp} onChange={(e) => setForm((f) => ({ ...f, no_whatsapp: e.target.value.replace(/\D/g, '') }))} required placeholder="Contoh: 081234567890" />
               </Field>
               <Field label="Email" htmlFor="email" error={err('email')}>
                 <input id="email" placeholder="Contoh: budi.santoso@email.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
@@ -529,26 +704,8 @@ export default function Pendaftaran() {
             </div>
           </Section>
 
-          {/* ANGGOTA KELOMPOK (opsional) */}
-          <Section judul="Anggota Kelompok (Opsional)" icon="users" tema="anggota" no={2}>
-            <p className="-mt-2 text-sm text-slate-600">
-              Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
-            </p>
-            {anggota.length > 0 && (
-              <div className="space-y-4">
-                {anggota.map((a, i) => (
-                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} err={err} />
-                ))}
-              </div>
-            )}
-            <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
-              className="w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
-              + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
-            </button>
-          </Section>
-
           {/* B. DATA MAGANG */}
-          <Section judul="Data Magang" icon="briefcase" tema="magang" no={3}>
+          <Section judul="Data Magang" icon="briefcase" tema="magang">
             <div className="grid gap-5 sm:grid-cols-2">
               <Field label="Periode Magang: Mulai" htmlFor="periode_mulai" error={err('periode_mulai')} hint="Contoh: 5 Januari 2027">
                 <input id="periode_mulai" type="date" className={inputCls} value={form.periode_mulai} onChange={set('periode_mulai')} required min={HARI_INI} />
@@ -584,14 +741,42 @@ export default function Pendaftaran() {
               <div className="grid gap-2.5 sm:grid-cols-2">
                 {formasi.map((f) => {
                   const aktif = bidangIds.includes(f.id)
+                  const s = statusKuota(f)
+                  const diatur = f.kuota !== null && f.kuota > 0
+                  const habis = s.kode === 'penuh' || s.kode === 'tutup'
+                  const terkunci = habis && !aktif // formasi penuh/ditutup tidak bisa dipilih
                   return (
-                    <label key={f.id} className={`flex cursor-pointer items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${aktif ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
-                      <input type="checkbox" checked={aktif} onChange={() => toggleBidang(f.id)} className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500" />
-                      <span className="text-slate-700">{f.nama_bidang}</span>
+                    <label key={f.id} aria-disabled={terkunci}
+                      className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${terkunci ? 'cursor-not-allowed border-slate-200 bg-slate-50' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
+                      <input type="checkbox" checked={aktif} disabled={terkunci} onChange={() => toggleBidang(f.id)}
+                        className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
+                      <div className="min-w-0 flex-1">
+                        <div className="flex items-start justify-between gap-2">
+                          <span className={`font-medium ${terkunci ? 'text-slate-400' : 'text-slate-700'}`}>{f.nama_bidang}</span>
+                          <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.badge}`}>{s.label}</span>
+                        </div>
+                        <p className={`mt-1 text-xs ${terkunci ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {diatur && !habis && (
+                            <>
+                              Sisa <span className={`font-semibold tabular-nums ${s.kode === 'hampir' ? 'text-amber-700' : 'text-slate-700'}`}>{f.sisa_kuota}</span> dari {f.kuota} kuota
+                            </>
+                          )}
+                          {s.kode === 'penuh' && `Kuota ${f.kuota} sudah terisi semua`}
+                          {s.kode === 'tutup' && 'Formasi sedang ditutup'}
+                          {s.kode === 'belum' && 'Kuota belum ditetapkan'}
+                        </p>
+                      </div>
                     </label>
                   )
                 })}
               </div>
+
+              {formasi.length > 0 && (
+                <p className="mt-2.5 text-xs text-slate-500">
+                  Kuota dihitung per orang dan dapat berubah sewaktu-waktu.{' '}
+                  <a href="/info-kuota" target="_blank" rel="noopener noreferrer" className="font-semibold text-brand-500 hover:underline">Lihat info kuota lengkap</a>
+                </p>
+              )}
 
               <div className={`mt-2.5 rounded-lg border px-3.5 py-3 transition ${lainnya ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
                 <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
@@ -613,8 +798,26 @@ export default function Pendaftaran() {
             </Field>
           </Section>
 
+          {/* ANGGOTA KELOMPOK (opsional) */}
+          <Section judul="Anggota Kelompok (Opsional)" icon="users" tema="anggota">
+            <p className="-mt-2 text-sm text-slate-600">
+              Mendaftar sendiri? Lewati bagian ini. Mendaftar bersama teman? Tambahkan data tiap anggota (maksimal {MAKS_ANGGOTA} orang di luar ketua).
+            </p>
+            {anggota.length > 0 && (
+              <div className="space-y-4">
+                {anggota.map((a, i) => (
+                  <Anggota key={i} i={i} data={a} ubah={ubahAnggota} hapus={hapusAnggota} salinKampus={salinKampus} bisaSalin={Boolean(form.jenjang && form.universitas && form.program_studi)} formasi={formasi} bidangKetua={formasi.find((f) => f.id === bidangIds[0])?.nama_bidang} err={err} />
+                ))}
+              </div>
+            )}
+            <button type="button" onClick={tambahAnggota} disabled={anggota.length >= MAKS_ANGGOTA}
+              className="w-full rounded-xl border-2 border-dashed border-brand-200 px-4 py-3 text-sm font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-50 disabled:cursor-not-allowed disabled:opacity-50">
+              + Tambah Anggota {anggota.length >= MAKS_ANGGOTA && `(maksimal ${MAKS_ANGGOTA})`}
+            </button>
+          </Section>
+
           {/* C. DOKUMEN */}
-          <Section judul="Dokumen Pendukung" icon="fileText" tema="dokumen" no={4}>
+          <Section judul="Dokumen Pendukung" icon="fileText" tema="dokumen">
             <p className="-mt-2 text-xs text-slate-500">Format PDF, JPG, atau PNG. Ukuran maksimal 2MB per file.</p>
             {DOKUMEN.map(({ key, label, wajib }) => (
               <Field key={key} label={label} htmlFor={key} required={wajib} error={err(key)}>
@@ -631,7 +834,7 @@ export default function Pendaftaran() {
           </Section>
 
           {/* D. PERNYATAAN */}
-          <Section judul="Pernyataan" icon="cap" tema="pernyataan" no={5}>
+          <Section judul="Pernyataan" icon="cap" tema="pernyataan">
             <div id="fld-pernyataan" data-error={err('pernyataan') ? 'true' : undefined}>
               <label className="flex cursor-pointer items-start gap-3 text-sm text-white/90">
                 <input type="checkbox" checked={setuju} onChange={(e) => setSetuju(e.target.checked)} className="mt-0.5 h-4 w-4 accent-brand-500" />
@@ -641,14 +844,24 @@ export default function Pendaftaran() {
             </div>
           </Section>
 
-          <button
-            type="submit"
-            disabled={kirim}
-            className="group inline-flex w-full items-center justify-center gap-2 rounded-full bg-brand-500 px-7 py-3.5 text-base font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
-          >
-            {kirim ? 'Mengirim…' : (<>Kirim Pendaftaran <Icon name="arrowRight" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" /></>)}
-          </button>
+          <div className="flex flex-col gap-4 rounded-2xl border border-brand-100 bg-brand-50 p-5 shadow-[0_2px_20px_rgba(0,0,0,0.06)] sm:flex-row sm:items-center sm:justify-between sm:p-6">
+            <div>
+              <p className="text-sm font-semibold text-brand-900">Siap mengirim pendaftaran?</p>
+              <p className="mt-0.5 text-xs leading-relaxed text-slate-500">
+                Setelah terkirim, Anda mendapat nomor pendaftaran dan bukti pendaftaran (PDF).
+              </p>
+            </div>
+            <button
+              type="submit"
+              disabled={kirim}
+              className="group inline-flex shrink-0 items-center justify-center gap-2 rounded-full bg-brand-500 px-7 py-3.5 text-base font-semibold text-white transition hover:bg-brand-600 disabled:cursor-not-allowed disabled:opacity-60"
+            >
+              {kirim ? 'Mengirim…' : (<>Kirim Pendaftaran <Icon name="arrowRight" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" /></>)}
+            </button>
+          </div>
         </form>
+          </div>
+        </div>
       </Sheet>
     </>
   )

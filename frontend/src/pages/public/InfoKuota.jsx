@@ -4,13 +4,14 @@ import api from '../../api/client'
 import Icon from '../../components/Icon'
 import { Eyebrow, PageHero, Reveal, Sheet, Sticker } from '../../components/Motif'
 
-// Penanda status tiap formasi (selaras dengan halaman Kuota di admin)
+// Status tiap formasi (selaras dengan halaman Kuota di admin).
+// Hampir penuh = sudah ada yang terisi dan sisa kuota tinggal 1-2 orang.
 function statusKuota(f) {
-  if (f.kuota === null) return { kode: 'belum', label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
-  if (f.kuota === 0) return { kode: 'tutup', label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300', aksen: 'bg-slate-300' }
-  if (f.sisa_kuota === 0) return { kode: 'penuh', label: 'Penuh', badge: 'bg-red-50 text-red-700', bar: 'bg-red-500', aksen: 'bg-red-500' }
-  if (f.sisa_kuota / f.kuota <= 0.2) return { kode: 'hampir', label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500', aksen: 'bg-amber-500' }
-  return { kode: 'tersedia', label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500', aksen: 'bg-emerald-500' }
+  if (f.kuota === null) return { kode: 'belum', label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', sisa: 'text-slate-400', titik: 'bg-slate-400' }
+  if (f.kuota === 0) return { kode: 'tutup', label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', sisa: 'text-slate-400', titik: 'bg-slate-400' }
+  if (f.sisa_kuota === 0) return { kode: 'penuh', label: 'Penuh', badge: 'bg-red-50 text-red-700', sisa: 'text-red-600', titik: 'bg-red-500' }
+  if (f.terisi > 0 && f.sisa_kuota <= 2) return { kode: 'hampir', label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', sisa: 'text-amber-600', titik: 'bg-amber-500' }
+  return { kode: 'tersedia', label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', sisa: 'text-emerald-600', titik: 'bg-emerald-500' }
 }
 
 const FILTER = [
@@ -22,9 +23,11 @@ const FILTER = [
 
 const BAYANGAN = 'shadow-[0_2px_20px_rgba(0,0,0,0.06)]'
 
-function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
+const diatur = (f) => f.kuota !== null && f.kuota > 0
+
+function Statistik({ judul, nilai, catatan, icon, gelap = false }) {
   return (
-    <div className={`group flex items-center gap-3 rounded-xl px-4 py-4 sm:gap-4 sm:px-5 ${BAYANGAN} ${gelap ? 'bg-brand-900 text-white' : 'border border-slate-100 bg-white'}`}>
+    <div className={`group flex h-full items-center gap-3 rounded-xl px-4 py-4 sm:gap-4 sm:px-5 ${BAYANGAN} ${gelap ? 'bg-brand-900 text-white' : 'border border-slate-100 bg-white'}`}>
       <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${gelap ? 'bg-white/15 text-white' : 'bg-brand-50 text-brand-500'}`}>
         <Icon name={icon} className="h-6 w-6" />
       </span>
@@ -37,61 +40,82 @@ function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
   )
 }
 
-function KartuFormasi({ f }) {
-  const s = statusKuota(f)
-  const diatur = f.kuota !== null && f.kuota > 0
-  const persen = diatur ? Math.min(100, Math.round((f.terisi / f.kuota) * 100)) : 0
-
+function Lencana({ s }) {
   return (
-    <article className={`group relative flex h-full flex-col overflow-hidden rounded-xl border border-slate-100 bg-white transition duration-300 hover:-translate-y-1 ${BAYANGAN}`}>
-      <div className={`h-1.5 ${s.aksen}`} />
-      <div className="flex flex-1 flex-col p-5">
-        <div className="flex items-start justify-between gap-3">
-          <span className="flex h-11 w-11 shrink-0 items-center justify-center rounded-full bg-brand-50 text-brand-500 transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110">
-            <Icon name="briefcase" className="h-5 w-5" />
-          </span>
-          <span className={`rounded-full px-3 py-1 text-xs font-semibold ${s.badge}`}>{s.label}</span>
-        </div>
+    <span className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-semibold whitespace-nowrap ${s.badge}`}>
+      <span className={`h-1.5 w-1.5 rounded-full ${s.titik}`} />
+      {s.label}
+    </span>
+  )
+}
 
-        <h3 className="mt-4 text-base leading-snug font-semibold text-brand-900">{f.nama_bidang}</h3>
-        <p className="mt-1.5 line-clamp-2 min-h-[2.75rem] text-sm leading-relaxed text-slate-500">
-          {f.deskripsi || 'Belum ada deskripsi untuk formasi ini.'}
-        </p>
+// Tampilan tabel (layar sedang ke atas)
+function Tabel({ data }) {
+  return (
+    <div className={`hidden overflow-hidden rounded-xl border border-slate-100 bg-white md:block ${BAYANGAN}`}>
+      <table className="w-full text-left text-sm">
+        <thead className="bg-brand-50 text-xs font-semibold tracking-wide text-slate-500 uppercase">
+          <tr>
+            <th scope="col" className="px-5 py-3">Formasi</th>
+            <th scope="col" className="w-24 px-3 py-3 text-center">Kuota</th>
+            <th scope="col" className="w-24 px-3 py-3 text-center">Terisi</th>
+            <th scope="col" className="w-28 px-3 py-3 text-center">Sisa</th>
+            <th scope="col" className="w-44 px-5 py-3">Status</th>
+          </tr>
+        </thead>
+        <tbody className="divide-y divide-slate-100">
+          {data.map((f) => {
+            const s = statusKuota(f)
+            const ada = diatur(f)
+            return (
+              <tr key={f.id} className={`transition hover:bg-brand-50/50 ${s.kode === 'penuh' || s.kode === 'tutup' ? 'bg-slate-50/60' : ''}`}>
+                <td className="px-5 py-3.5">
+                  <p className="font-semibold text-brand-900">{f.nama_bidang}</p>
+                  {f.deskripsi && <p className="mt-0.5 line-clamp-1 text-xs text-slate-500">{f.deskripsi}</p>}
+                </td>
+                <td className="px-3 py-3.5 text-center text-slate-700 tabular-nums">{ada ? f.kuota : '—'}</td>
+                <td className="px-3 py-3.5 text-center text-slate-700 tabular-nums">{ada ? f.terisi : '—'}</td>
+                <td className={`px-3 py-3.5 text-center text-lg font-semibold tabular-nums ${s.sisa}`}>{ada ? f.sisa_kuota : '—'}</td>
+                <td className="px-5 py-3.5"><Lencana s={s} /></td>
+              </tr>
+            )
+          })}
+        </tbody>
+      </table>
+    </div>
+  )
+}
 
-        <div className="mt-4 border-t border-slate-100 pt-4">
-          {diatur ? (
-            <>
-              <div className="flex items-end justify-between gap-3">
-                <div>
-                  <p className="text-3xl leading-none font-semibold text-brand-900 tabular-nums">{f.sisa_kuota}</p>
-                  <p className="mt-1 text-xs text-slate-500">kuota tersisa</p>
-                </div>
-                <p className="text-right text-xs text-slate-500">
-                  <span className="font-semibold text-slate-700 tabular-nums">{f.terisi}</span> terisi dari{' '}
-                  <span className="font-semibold text-slate-700 tabular-nums">{f.kuota}</span>
-                </p>
-              </div>
-              <div className="mt-3 h-2 overflow-hidden rounded-full bg-slate-100"
-                role="progressbar" aria-valuemin={0} aria-valuemax={f.kuota} aria-valuenow={f.terisi}
-                aria-label={`Kuota terisi ${f.terisi} dari ${f.kuota}`}>
-                <div className={`h-full rounded-full transition-all ${s.bar}`} style={{ width: `${persen}%` }} />
-              </div>
-            </>
-          ) : (
-            <p className="text-sm text-slate-500">
-              {f.kuota === 0 ? 'Formasi sedang ditutup.' : 'Kuota belum ditetapkan.'}
-            </p>
-          )}
-        </div>
+// Tampilan kartu ringkas (HP)
+function KartuRingkas({ f }) {
+  const s = statusKuota(f)
+  const ada = diatur(f)
+  return (
+    <article className={`rounded-xl border border-slate-100 p-4 ${BAYANGAN} ${s.kode === 'penuh' || s.kode === 'tutup' ? 'bg-slate-50' : 'bg-white'}`}>
+      <div className="flex items-start justify-between gap-3">
+        <h3 className="text-sm leading-snug font-semibold text-brand-900">{f.nama_bidang}</h3>
+        <Lencana s={s} />
       </div>
+      {f.deskripsi && <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-slate-500">{f.deskripsi}</p>}
+      {ada ? (
+        <dl className="mt-3 grid grid-cols-3 divide-x divide-slate-200 rounded-lg bg-slate-50 py-2 text-center">
+          <div><dt className="text-[10px] text-slate-500 uppercase">Kuota</dt><dd className="text-base font-semibold text-slate-700 tabular-nums">{f.kuota}</dd></div>
+          <div><dt className="text-[10px] text-slate-500 uppercase">Terisi</dt><dd className="text-base font-semibold text-slate-700 tabular-nums">{f.terisi}</dd></div>
+          <div><dt className="text-[10px] text-slate-500 uppercase">Sisa</dt><dd className={`text-base font-semibold tabular-nums ${s.sisa}`}>{f.sisa_kuota}</dd></div>
+        </dl>
+      ) : (
+        <p className="mt-3 rounded-lg bg-slate-50 px-3 py-2 text-xs text-slate-500">
+          {f.kuota === 0 ? 'Formasi sedang ditutup.' : 'Kuota belum ditetapkan.'}
+        </p>
+      )}
     </article>
   )
 }
 
 function Skeleton() {
   return (
-    <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3" aria-busy="true" aria-label="Memuat data">
-      {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-56 animate-pulse rounded-xl bg-brand-50" />)}
+    <div className="space-y-2" aria-busy="true" aria-label="Memuat data">
+      {Array.from({ length: 6 }).map((_, i) => <div key={i} className="h-14 animate-pulse rounded-xl bg-brand-50" />)}
     </div>
   )
 }
@@ -115,14 +139,19 @@ export default function InfoKuota() {
   useEffect(() => { muat() }, [])
 
   const total = useMemo(() => {
-    const diatur = formasi.filter((f) => f.kuota !== null)
+    const ada = formasi.filter((f) => f.kuota !== null)
     return {
       formasi: formasi.length,
-      kuota: diatur.reduce((n, f) => n + f.kuota, 0),
-      terisi: diatur.reduce((n, f) => n + f.terisi, 0),
-      sisa: diatur.reduce((n, f) => n + (f.sisa_kuota ?? 0), 0),
+      kuota: ada.reduce((n, f) => n + f.kuota, 0),
+      terisi: ada.reduce((n, f) => n + f.terisi, 0),
+      sisa: ada.reduce((n, f) => n + (f.sisa_kuota ?? 0), 0),
     }
   }, [formasi])
+
+  const jumlah = useMemo(
+    () => Object.fromEntries(FILTER.map((x) => [x.id, formasi.filter((f) => x.cocok(statusKuota(f))).length])),
+    [formasi],
+  )
 
   const tampil = useMemo(() => {
     const kata = cari.trim().toLowerCase()
@@ -149,12 +178,13 @@ export default function InfoKuota() {
           </p>
         </Reveal>
 
+        {/* Ringkasan */}
         {adaData && (
           <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Reveal variant="up" delay={0}><Ringkasan judul="Total Formasi" nilai={total.formasi} icon="briefcase" /></Reveal>
-            <Reveal variant="up" delay={100}><Ringkasan judul="Total Kuota" nilai={total.kuota} catatan="dari formasi yang sudah diatur" icon="users" /></Reveal>
-            <Reveal variant="up" delay={200}><Ringkasan judul="Sudah Terisi" nilai={total.terisi} catatan="pendaftar diterima" icon="shieldCheck" /></Reveal>
-            <Reveal variant="up" delay={300}><Ringkasan judul="Kuota Tersisa" nilai={total.sisa} icon="target" gelap /></Reveal>
+            <Reveal variant="up" delay={0}><Statistik judul="Total Formasi" nilai={total.formasi} icon="briefcase" /></Reveal>
+            <Reveal variant="up" delay={100}><Statistik judul="Total Kuota" nilai={total.kuota} catatan="dari formasi yang sudah diatur" icon="users" /></Reveal>
+            <Reveal variant="up" delay={200}><Statistik judul="Sudah Terisi" nilai={total.terisi} catatan="peserta diterima" icon="shieldCheck" /></Reveal>
+            <Reveal variant="up" delay={300}><Statistik judul="Kuota Tersisa" nilai={total.sisa} icon="target" gelap /></Reveal>
           </div>
         )}
 
@@ -169,8 +199,11 @@ export default function InfoKuota() {
           <div className="flex flex-wrap gap-2" role="group" aria-label="Filter status kuota">
             {FILTER.map((x) => (
               <button key={x.id} type="button" onClick={() => setFilter(x.id)} aria-pressed={filter === x.id}
-                className={`rounded-full border px-4 py-2 text-sm font-semibold transition ${filter === x.id ? 'border-brand-900 bg-brand-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-brand-900 hover:text-brand-900'}`}>
+                className={`inline-flex items-center gap-2 rounded-full border px-4 py-2 text-sm font-semibold transition ${filter === x.id ? 'border-brand-900 bg-brand-900 text-white' : 'border-slate-300 bg-white text-slate-600 hover:border-brand-900 hover:text-brand-900'}`}>
                 {x.label}
+                {adaData && (
+                  <span className={`rounded-full px-1.5 text-[10px] tabular-nums ${filter === x.id ? 'bg-white/25 text-white' : 'bg-slate-100 text-slate-500'}`}>{jumlah[x.id]}</span>
+                )}
               </button>
             ))}
           </div>
@@ -198,27 +231,26 @@ export default function InfoKuota() {
 
           {adaData && (
             <>
-              <p className="mb-4 text-sm text-slate-500">Menampilkan {tampil.length} dari {formasi.length} formasi</p>
+              <p className="mb-3 text-sm text-slate-500">Menampilkan {tampil.length} dari {formasi.length} formasi</p>
               {tampil.length === 0 ? (
                 <div className="rounded-2xl border border-slate-100 bg-brand-50 px-6 py-12 text-center text-sm text-slate-600">
                   Tidak ada formasi yang cocok dengan pencarian atau filter Anda.
                 </div>
               ) : (
-                <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                  {tampil.map((f, i) => (
-                    <Reveal key={f.id} delay={(i % 3) * 90} tilt={i % 2 ? 2 : -2} className="h-full">
-                      <KartuFormasi f={f} />
-                    </Reveal>
-                  ))}
-                </div>
+                <>
+                  <Tabel data={tampil} />
+                  <div className="grid gap-3 sm:grid-cols-2 md:hidden">
+                    {tampil.map((f) => <KartuRingkas key={f.id} f={f} />)}
+                  </div>
+                </>
               )}
             </>
           )}
         </div>
 
         <p className="mt-6 text-xs leading-relaxed text-slate-500">
-          Kuota terisi dihitung dari pendaftar yang sudah berstatus <span className="font-semibold">diterima</span>. Angka dapat berubah
-          sewaktu-waktu mengikuti hasil verifikasi.
+          Kuota terisi dihitung per orang (ketua dan anggota kelompok) dari pendaftaran yang sudah berstatus <span className="font-semibold">diterima</span>.
+          Angka dapat berubah sewaktu-waktu mengikuti hasil verifikasi.
         </p>
       </Sheet>
 
