@@ -115,13 +115,13 @@ export default function Login() {
       <Container className="flex flex-1 items-center py-24">
         <div className="grid w-full items-center gap-10 lg:grid-cols-[1.1fr_0.9fr] lg:gap-16">
           {/* Sisi kiri: salam, seperti hero Beranda */}
-          <div className="max-w-xl lg:pb-16">
+          <div className="max-w-xl max-md:mx-auto max-md:text-center lg:pb-16">
             <Link to="/" aria-label="Beranda BKPSDM" className="rise-in inline-block"><Logo light /></Link>
             <p style={{ '--d': '150ms' }} className="rise-in mt-8 mb-2 -rotate-1 origin-left font-script text-3xl text-brand-200">Panel Admin</p>
-            <h1 style={{ '--d': '250ms' }} className="rise-in text-3xl leading-[1.15] font-semibold text-slate-100 md:text-4xl lg:text-5xl">
+            <h1 style={{ '--d': '250ms' }} className="rise-in text-2xl leading-[1.15] font-semibold text-slate-100 sm:text-3xl md:text-4xl lg:text-5xl">
               Kelola Magang <span className="text-brand-500">BKPSDM Kota Yogyakarta</span>
             </h1>
-            <p style={{ '--d': '420ms' }} className="rise-in mt-5 text-lg leading-relaxed text-slate-100">
+            <p style={{ '--d': '420ms' }} className="rise-in mt-5 text-base leading-relaxed text-slate-100 sm:text-lg">
               Masuk untuk memverifikasi pendaftar, mengatur kuota formasi, dan memantau program magang.
             </p>
           </div>

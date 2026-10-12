@@ -25,15 +25,15 @@ function Judul({ children }) {
 // Isi footer; dipakai sebagai map terakhir di dalam tumpukan halaman, dan oleh Footer mandiri di bawah.
 export function FooterBody() {
   return (
-    <div className="mx-auto max-w-7xl px-6 pt-14 pb-8">
-      <div className="grid gap-10 md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.3fr]">
+    <div className="pad-x pad-b-safe mx-auto max-w-7xl px-6 pt-14 pb-8">
+      <div className="grid gap-10 max-md:text-center md:grid-cols-2 lg:grid-cols-[1.4fr_1fr_1.3fr]">
         {/* Identitas */}
-        <div>
+        <div className="max-md:flex max-md:flex-col max-md:items-center">
           <Logo light />
           <p className="mt-5 max-w-sm text-sm leading-relaxed text-slate-400">
             Portal pendaftaran magang Badan Kepegawaian dan Pengembangan Sumber Daya Manusia (BKPSDM) Kota Yogyakarta.
           </p>
-          <div className="mt-6 flex gap-3">
+          <div className="mt-6 flex gap-3 max-md:justify-center">
             {socials.map((s) => (
               <a key={s.name} href={s.href} target="_blank" rel="noopener noreferrer" aria-label={s.label} title={s.label}
                 className="flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-brand-500">
@@ -62,15 +62,15 @@ export function FooterBody() {
         <div>
           <Judul>Hubungi Kami</Judul>
           <ul className="space-y-3.5 text-sm">
-            <li className="flex gap-3">
+            <li className="flex gap-3 max-md:flex-col max-md:items-center max-md:gap-1.5">
               <Icon name="pin" className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
               <span>BKPSDM Kota Yogyakarta<br />{kontak.alamat}</span>
             </li>
-            <li className="flex gap-3">
+            <li className="flex gap-3 max-md:flex-col max-md:items-center max-md:gap-1.5">
               <Icon name="mail" className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
               <a href={`mailto:${kontak.email}`} className="transition hover:text-white">{kontak.email}</a>
             </li>
-            <li className="flex gap-3">
+            <li className="flex gap-3 max-md:flex-col max-md:items-center max-md:gap-1.5">
               <Icon name="globe" className="mt-0.5 h-4 w-4 shrink-0 text-brand-500" />
               <a href={kontak.websiteHref} target="_blank" rel="noopener noreferrer" className="transition hover:text-white">{kontak.website}</a>
             </li>
@@ -78,7 +78,7 @@ export function FooterBody() {
         </div>
       </div>
 
-      <div className="mt-10 flex flex-col justify-between gap-2 border-t border-white/10 pt-5 text-xs text-slate-400 sm:flex-row">
+      <div className="mt-10 flex flex-col justify-between gap-2 border-t border-white/10 pt-5 text-xs text-slate-400 max-sm:items-center max-sm:text-center sm:flex-row">
         <p>© {new Date().getFullYear()} By. UNIVERSITAS DUTA BANGSA SURAKARTA - BKPSDM Kota Yogyakarta. All rights reserved.</p>
         <p className="text-slate-300">Melayani dengan Profesional, Membangun SDM Unggul</p>
       </div>
@@ -86,7 +86,8 @@ export function FooterBody() {
   )
 }
 
-const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Efek tumpukan/miring saat scroll dimatikan di HP (< 768px) dan bagi yang meminta animasi dikurangi: di layar kecil efek ini membuat section melompat & menimpa isi.
+const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 767px)').matches
 const clamp01 = (v) => Math.min(Math.max(v, 0), 1)
 
 // Footer halaman dalam = map arsip terakhir, persis seperti footer di Beranda: bentuk yang sama, dan kemiringannya (tepi atas tetap rapat,

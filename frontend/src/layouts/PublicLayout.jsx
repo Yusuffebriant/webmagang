@@ -3,7 +3,8 @@ import { Outlet, useLocation } from 'react-router-dom'
 import Navbar from '../components/Navbar'
 import Footer from '../components/Footer'
 
-const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Efek tumpukan/miring saat scroll dimatikan di HP (< 768px) dan bagi yang meminta animasi dikurangi: di layar kecil efek ini membuat section melompat & menimpa isi.
+const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 767px)').matches
 const clamp01 = (v) => Math.min(Math.max(v, 0), 1)
 
 export default function PublicLayout() {

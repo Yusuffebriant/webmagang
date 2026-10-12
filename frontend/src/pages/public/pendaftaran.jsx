@@ -135,16 +135,16 @@ function Section({ judul, icon, tema = 'pribadi', children }) {
   const t = TEMA[tema]
   return (
     <Reveal as="section" id={`bagian-${tema}`} variant="up" className={`relative scroll-mt-24 rounded-2xl border shadow-[0_2px_20px_rgba(0,0,0,0.06)] ${t.root}`}>
-      <div className={`flex items-center gap-4 px-6 py-5 sm:px-8 ${t.head}`}>
-        <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full ${t.ikon}`}>
+      <div className={`flex items-center gap-3 px-4 py-4 sm:gap-4 sm:px-8 sm:py-5 ${t.head}`}>
+        <span className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-full sm:h-12 sm:w-12 ${t.ikon}`}>
           <Icon name={icon} className="h-6 w-6" />
         </span>
         <div>
           <p className={`-rotate-1 origin-left font-script text-xl leading-none ${t.langkah}`}>Langkah {NOMOR_LANGKAH[tema]} dari 5</p>
-          <h2 className={`text-xl font-semibold ${t.judul}`}>{judul}</h2>
+          <h2 className={`text-lg font-semibold sm:text-xl ${t.judul}`}>{judul}</h2>
         </div>
       </div>
-      <div className="space-y-5 px-6 py-6 sm:px-8 sm:py-7">{children}</div>
+      <div className="space-y-5 px-4 py-5 sm:px-8 sm:py-7">{children}</div>
     </Reveal>
   )
 }
@@ -202,7 +202,7 @@ function StepMobile({ langkah, aktif }) {
           <li key={l.tema}>
             <button type="button" onClick={() => lompatBagian(l.tema)}
               className={`flex items-center gap-2 rounded-full border px-3 py-1.5 text-xs font-semibold whitespace-nowrap transition ${l.tema === aktif ? 'border-brand-500 bg-brand-500 text-white shadow-sm' : 'border-slate-200 bg-white text-slate-600'}`}>
-              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[10px] ${l.tema === aktif ? 'bg-white/20' : l.selesai ? 'bg-brand-500 text-white' : 'bg-slate-100'}`}>
+              <span className={`flex h-5 w-5 items-center justify-center rounded-full text-[0.78rem] ${l.tema === aktif ? 'bg-white/20' : l.selesai ? 'bg-brand-500 text-white' : 'bg-slate-100'}`}>
                 {l.selesai ? <svg viewBox="0 0 24 24" className="h-3 w-3" fill="none" stroke="currentColor" strokeWidth="3" strokeLinecap="round" strokeLinejoin="round" aria-hidden="true"><path d="m5 12 5 5L20 7" /></svg> : i + 1}
               </span>
               {l.label}
@@ -650,14 +650,14 @@ export default function Pendaftaran() {
         </PageHero>
 
       <SlideStack>
-        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-36 md:pt-16">
+        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-28 md:pt-16 md:pb-36">
           <Container max="max-w-xl">
             <Sticker kind="heart" rotate={9} className="-top-12 right-4" />
             <Reveal className="text-center">
               <CheckCircle className="mx-auto h-16 w-16 text-brand-500" />
-              <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50 p-6">
+              <div className="mt-6 rounded-xl border border-brand-100 bg-brand-50 p-5 sm:p-6">
                 <p className="-rotate-1 font-script text-2xl text-brand-500">Nomor Pendaftaran</p>
-                <p className="mt-1 text-3xl font-semibold tracking-wider text-brand-900">{hasil.nomor_pendaftaran}</p>
+                <p className="mt-1 text-2xl font-semibold tracking-wider text-brand-900 sm:text-3xl">{hasil.nomor_pendaftaran}</p>
                 <p className="mt-2 text-sm text-slate-500">Simpan nomor ini untuk mengecek status pendaftaran.</p>
               </div>
               <p className="mt-5 text-base leading-relaxed text-slate-600">
@@ -730,7 +730,7 @@ export default function Pendaftaran() {
                   </p>
                   {prefill.catatan && (
                     <div className="mt-3 rounded-lg border border-red-200 bg-white px-4 py-3 text-red-800">
-                      <p className="text-[11px] font-semibold tracking-wide uppercase opacity-70">Catatan dari BKPSDM</p>
+                      <p className="text-[0.86rem] font-semibold tracking-wide uppercase opacity-70">Catatan dari BKPSDM</p>
                       <p className="mt-1 whitespace-pre-line text-sm font-medium">{prefill.catatan}</p>
                     </div>
                   )}
@@ -856,7 +856,7 @@ export default function Pendaftaran() {
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
                               <span className={`font-medium ${terkunci ? 'text-slate-400' : 'text-slate-700'}`}>{f.nama_bidang}</span>
-                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[10px] font-semibold ${s.badge}`}>{s.label}</span>
+                              <span className={`shrink-0 rounded-full px-2 py-0.5 text-[0.78rem] font-semibold ${s.badge}`}>{s.label}</span>
                             </div>
                             <p className={`mt-1 text-xs ${terkunci ? 'text-slate-400' : 'text-slate-500'}`}>
                               {diatur && !habis && (
@@ -959,7 +959,7 @@ export default function Pendaftaran() {
               </Section>
 
               <div className="rounded-2xl border border-brand-100 bg-brand-50 p-5 shadow-[0_2px_20px_rgba(0,0,0,0.06)] sm:p-6">
-              <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+              <div className="flex flex-col gap-4 max-sm:text-center sm:flex-row sm:items-center sm:justify-between">
                 <div>
                   <p className="text-sm font-semibold text-brand-900">Siap mengirim pendaftaran?</p>
                   <p className="mt-0.5 text-xs leading-relaxed text-slate-500">

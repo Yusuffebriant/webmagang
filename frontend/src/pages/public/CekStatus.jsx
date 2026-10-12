@@ -163,14 +163,14 @@ export default function CekStatus() {
       </PageHero>
 
       <SlideStack>
-        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-36 md:pt-16">
+        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-28 md:pt-16 md:pb-36">
           <Container max="max-w-3xl">
             <Sticker kind="sparkle" rotate={12} className="-top-12 right-4" />
             <div className="space-y-8">
               {/* Form pencarian */}
-              <Reveal as="form" onSubmit={submit} className="rounded-xl border border-slate-100 bg-white p-6 shadow-[0_2px_20px_rgba(0,0,0,0.06)] sm:p-8">
+              <Reveal as="form" onSubmit={submit} className="rounded-xl border border-slate-100 bg-white p-5 shadow-[0_2px_20px_rgba(0,0,0,0.06)] max-md:text-center sm:p-8">
                 <Eyebrow>Lacak Pendaftaran</Eyebrow>
-                <label htmlFor="nomor" className="mb-3 block text-2xl font-semibold text-brand-900">
+                <label htmlFor="nomor" className="mb-3 block text-xl font-semibold text-brand-900 sm:text-2xl">
                   Masukkan nomor Anda
                 </label>
                 <div className="flex flex-col gap-3 sm:flex-row">
@@ -281,7 +281,7 @@ export default function CekStatus() {
               )}
               {/* Belum mendaftar */}
               {!hasil && (
-                <Reveal className="flex flex-col items-start gap-3 rounded-xl bg-brand-900 px-5 py-4 sm:flex-row sm:items-center">
+                <Reveal className="flex flex-col items-center gap-3 rounded-xl bg-brand-900 px-5 py-4 text-center sm:flex-row sm:items-center sm:text-left">
                   <span className="float-y flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
                     <Icon name="userPlus" className="h-5 w-5" />
                   </span>

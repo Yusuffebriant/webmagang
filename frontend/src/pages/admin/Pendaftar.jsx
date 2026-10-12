@@ -206,7 +206,7 @@ function Detail({ id, onClose, onBerubah }) {
                     return (
                       <div key={a.id} className="rounded-xl border border-slate-200 bg-slate-50/60 px-4 py-2">
                         <p className="border-b border-slate-200 py-2 text-sm font-bold text-brand-900">
-                          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[11px] text-white">{i + 1}</span>
+                          <span className="mr-2 inline-flex h-5 w-5 items-center justify-center rounded-full bg-brand-500 text-[0.86rem] text-white">{i + 1}</span>
                           {a.nama_lengkap}
                         </p>
                         <dl className="divide-y divide-slate-100">
@@ -465,7 +465,7 @@ export default function Pendaftar() {
                         {p.nama_lengkap}
                       </button>
                       {p.jumlah_anggota > 0 && (
-                        <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-brand-600">
+                        <span className="ml-2 rounded-full bg-brand-50 px-2 py-0.5 text-[0.86rem] font-semibold text-brand-600">
                           Kelompok · {p.jumlah_anggota + 1} orang
                         </span>
                       )}

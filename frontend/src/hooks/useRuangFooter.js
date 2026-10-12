@@ -11,7 +11,7 @@ export default function useRuangFooter(kunci) {
   const [tinggi, setTinggi] = useState(0)
 
   useEffect(() => {
-    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return undefined // tanpa animasi tumpukan: tidak perlu ruang ekstra
+    if (window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 767px)').matches) return undefined // tanpa animasi tumpukan: tidak perlu ruang ekstra
     const el = document.getElementById('footer-slide')
     if (!el) return undefined
     const ukur = () => setTinggi(Math.round(el.offsetHeight))

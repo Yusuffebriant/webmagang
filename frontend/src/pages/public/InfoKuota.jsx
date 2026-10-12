@@ -25,7 +25,7 @@ function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
       </span>
       <div className="min-w-0">
         <p className={`text-xs font-semibold tracking-wide uppercase ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{judul}</p>
-        <p className={`text-3xl leading-tight font-semibold tabular-nums ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
+        <p className={`text-2xl leading-tight font-semibold tabular-nums sm:text-3xl ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
         {catatan && <p className={`text-xs ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{catatan}</p>}
       </div>
     </div>
@@ -41,7 +41,7 @@ function KartuFormasi({ f }) {
     <article className={`flex h-full flex-col rounded-xl border p-4 transition ${BAYANGAN} ${habis ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-white hover:-translate-y-0.5 hover:shadow-[0_6px_28px_rgba(0,0,0,0.10)]'}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className={`text-sm leading-snug font-semibold ${habis ? 'text-slate-500' : 'text-brand-900'}`}>{f.nama_bidang}</h3>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${st.badge}`}>{st.label}</span>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.86rem] font-semibold ${st.badge}`}>{st.label}</span>
       </div>
       <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-slate-500">
         {f.deskripsi || 'Belum ada deskripsi untuk formasi ini.'}
@@ -51,9 +51,9 @@ function KartuFormasi({ f }) {
           <>
             <div>
               <p className={`text-2xl leading-none font-semibold tabular-nums ${st.kode === 'hampir' ? 'text-amber-600' : habis ? 'text-slate-400' : 'text-brand-900'}`}>{f.sisa_kuota}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">kuota tersisa</p>
+              <p className="mt-0.5 text-[0.86rem] text-slate-500">kuota tersisa</p>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.86rem] text-slate-500">
               <span className="font-semibold text-slate-700 tabular-nums">{f.terisi}</span> terisi dari{' '}
               <span className="font-semibold text-slate-700 tabular-nums">{f.kuota}</span>
             </p>
@@ -119,13 +119,13 @@ export default function InfoKuota() {
 
       <SlideStack>
         {/* KETERSEDIAAN FORMASI */}
-        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-16 pb-[var(--pb,9rem)] md:pt-20" style={ruangFooter}>
+        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-[var(--pb,9rem)] md:pt-20" style={ruangFooter}>
           <Container>
             <Sticker kind="sparkle" rotate={12} className="-top-4 right-4" />
-            <Reveal>
+            <Reveal className="max-md:text-center">
               <Eyebrow>Ketersediaan Formasi</Eyebrow>
-              <h2 className="text-3xl font-semibold text-brand-900">Pilih Formasi yang Sesuai</h2>
-              <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600">
+              <h2 className="text-2xl font-semibold text-brand-900 sm:text-3xl">Pilih Formasi yang Sesuai</h2>
+              <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600 max-md:mx-auto">
                 Lihat sisa kuota tiap formasi, lalu pilih yang paling cocok dengan minat dan bidang studi Anda.
               </p>
             </Reveal>
@@ -148,7 +148,7 @@ export default function InfoKuota() {
                   placeholder="Cari nama formasi…" aria-label="Cari formasi"
                   className="w-full rounded-full border border-slate-200 bg-white py-3 pr-5 pl-11 text-sm text-slate-800 transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none" />
               </div>
-              <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-slate-600">
+              <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-slate-600 max-md:justify-center">
                 {KELOMPOK.slice(0, 3).map((k) => (
                   <li key={k.id} className="inline-flex items-center gap-2">
                     <span aria-hidden="true" className={`h-2 w-2 rounded-full ${k.titik}`} />
@@ -190,7 +190,7 @@ export default function InfoKuota() {
                         <div className="mb-3 flex items-center gap-2.5">
                           <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${k.titik}`} />
                           <h3 id={`kel-${k.id}`} className="text-base font-semibold text-brand-900">{k.judul}</h3>
-                          <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[11px] font-semibold text-slate-600 tabular-nums">{k.isi.length}</span>
+                          <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.86rem] font-semibold text-slate-600 tabular-nums">{k.isi.length}</span>
                           <span className="hidden text-xs text-slate-500 sm:inline">{k.ket}</span>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
@@ -209,7 +209,7 @@ export default function InfoKuota() {
             </p>
 
             {/* Ajakan daftar */}
-            <Reveal className="mt-10 flex flex-col items-start gap-3 rounded-xl bg-brand-900 px-5 py-4 sm:flex-row sm:items-center">
+            <Reveal className="mt-10 flex flex-col items-center gap-3 rounded-xl bg-brand-900 px-5 py-4 text-center sm:flex-row sm:items-center sm:text-left">
               <span className="float-y flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
                 <Icon name="cap" className="h-5 w-5" />
               </span>

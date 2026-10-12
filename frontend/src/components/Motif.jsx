@@ -7,7 +7,7 @@ import SafeImage from './SafeImage'
 export const FOTO_HERO = '/images/gedung_bkpsdm.jpeg'
 
 export const Container = ({ className = '', max = 'max-w-7xl', children }) => (
-  <div className={`relative z-10 mx-auto ${max} px-6 ${className}`}>{children}</div>
+  <div className={`pad-x relative z-10 mx-auto ${max} px-6 ${className}`}>{children}</div>
 )
 
 export const Eyebrow = ({ light = false, children }) => (
@@ -134,16 +134,16 @@ export function PageHero({ eyebrow, title, children }) {
         <SafeImage src={FOTO_HERO} className="absolute inset-0 h-full w-full object-cover object-bottom" />
         <div className="absolute inset-0 bg-gradient-to-r from-brand-900/95 via-brand-900/80 to-brand-900/40" />
         <div className="absolute inset-x-0 bottom-0 h-44 bg-gradient-to-t from-brand-900 from-45% to-transparent" />
-        <Container className="pt-36 pb-28 md:pt-44 md:pb-32">
-          <div className="max-w-3xl">
+        <Container className="pt-32 pb-24 md:pt-44 md:pb-32">
+          <div className="max-w-3xl max-md:mx-auto max-md:text-center">
             {eyebrow && (
               <p style={{ '--d': '150ms' }} className="rise-in mb-2 -rotate-1 origin-left font-script text-3xl text-brand-200">{eyebrow}</p>
             )}
-            <h1 style={{ '--d': '250ms' }} className="rise-in text-3xl leading-[1.15] font-semibold text-slate-100 md:text-4xl lg:text-5xl">
+            <h1 style={{ '--d': '250ms' }} className="rise-in text-2xl leading-[1.15] font-semibold text-slate-100 sm:text-3xl md:text-4xl lg:text-5xl">
               {title}
             </h1>
             {children && (
-              <p style={{ '--d': '420ms' }} className="rise-in mt-5 max-w-xl text-lg leading-relaxed text-slate-100">{children}</p>
+              <p style={{ '--d': '420ms' }} className="rise-in mt-5 max-w-xl text-base leading-relaxed text-slate-100 max-md:mx-auto sm:text-lg">{children}</p>
             )}
           </div>
         </Container>
@@ -172,7 +172,8 @@ export function Sheet({ tone = 'white', first = false, max = 'max-w-7xl', classN
 // (sedikit mengecil dan menggelap) saat tertimpa. Map yang lebih tinggi dari layar menempel di dasar layar supaya
 // isinya sempat terbaca. Transform dipasang pada div dalam (bukan pada <section> yang sticky), sehingga posisi yang
 // dibaca untuk menghitung progres tidak terpengaruh transform sendiri. Per frame hanya `transform` + `opacity` yang berubah.
-const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+// Efek tumpukan/miring saat scroll dimatikan di HP (< 768px) dan bagi yang meminta animasi dikurangi: di layar kecil efek ini membuat section melompat & menimpa isi.
+const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce), (max-width: 767px)').matches
 const clamp01 = (v) => Math.min(Math.max(v, 0), 1)
 
 export function SlideStack({ className = '', watch, children }) {

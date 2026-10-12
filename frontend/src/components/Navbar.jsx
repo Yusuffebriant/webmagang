@@ -77,7 +77,7 @@ export default function Navbar() {
     }
     const onScroll = () => {
       tandai()
-      if (!bukaRef.current) atur(true)
+      if (!bukaRef.current && window.innerWidth >= 768) atur(true) // di HP navbar tetap tampil: bersembunyi tiap scroll terasa berkedip
       clearTimeout(timer.current)
       timer.current = setTimeout(() => atur(false), 200)
     }
@@ -113,7 +113,7 @@ export default function Navbar() {
   const tujuanAdmin = adaSesi ? '/admin' : '/admin/login'
 
   return (
-    <header className="nav-drop fixed inset-x-0 top-3 z-50 px-4 font-geist md:top-4">
+    <header className="nav-drop nav-safe fixed inset-x-0 top-3 z-50 px-4 font-geist md:top-4">
       <div
         ref={barRef}
         data-open={open}
@@ -140,14 +140,14 @@ export default function Navbar() {
         </Link>
 
         <button type="button" onClick={() => setOpen((v) => !v)}
-          className="flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 xl:hidden"
+          className="tap-44 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 xl:hidden"
           aria-label="Buka menu" aria-expanded={open}>
           <Icon name={open ? 'close' : 'menu'} className="h-5 w-5" />
         </button>
       </div>
 
       {open && (
-        <nav className="mx-auto mt-2 max-w-6xl rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
+        <nav className="mx-auto mt-2 max-h-[calc(100dvh-6rem)] max-w-6xl overflow-y-auto rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
           {navbarLinks.map((l) => (
             <Link key={l.label} to={l.href ?? l.to} onClick={() => setOpen(false)}
               className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white">
