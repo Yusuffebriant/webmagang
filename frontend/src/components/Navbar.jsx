@@ -13,8 +13,8 @@ export const navLinks = [
   { label: 'Cek Status', to: '/cek-status' },
 ]
 
-// Menu navbar: tanpa 'Tentang Instansi' dan 'Program Magang' (footer tetap memakai navLinks lengkap).
-const navbarLinks = navLinks.filter((l) => l.href !== '/#tentang' && l.href !== '/#program')
+// Menu navbar: tanpa 'Tentang Instansi' dan 'Program Magang'. Footer memakai daftar yang sama.
+export const navbarLinks = navLinks.filter((l) => l.href !== '/#tentang' && l.href !== '/#program')
 
 // Posisi (dari atas dokumen) tempat section berada saat tidak menempel.
 // Section di Beranda bersifat `position: sticky`, jadi getBoundingClientRect/scrollIntoView memberi posisi saat

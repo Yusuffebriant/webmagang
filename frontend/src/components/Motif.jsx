@@ -22,9 +22,25 @@ const STIKER = {
 }
 export function Sticker({ kind = 'sparkle', rotate = 10, className = '' }) {
   const k = STIKER[kind]
+  const ref = useRef(null)
+  const [show, setShow] = useState(false)
+
+  // Muncul pelan saat sudah masuk layar (animasi di index.css), di-reset saat benar-benar keluar layar supaya muncul lagi di scroll berikutnya.
+  useEffect(() => {
+    const el = ref.current
+    if (!el) return
+    const ioIn = new IntersectionObserver(([e]) => { if (e.isIntersecting) setShow(true) }, { rootMargin: '0px 0px -12% 0px' })
+    const ioOut = new IntersectionObserver(([e]) => { if (!e.isIntersecting) setShow(false) })
+    ioIn.observe(el)
+    ioOut.observe(el)
+    return () => { ioIn.disconnect(); ioOut.disconnect() }
+  }, [])
+
+  // z-30: stiker selalu menimpa kartu/konten lain di sekitarnya (bukan tertimpa).
   return (
-    <svg aria-hidden="true" viewBox="0 0 100 100" style={{ '--r': `${rotate}deg`, transform: `rotate(${rotate}deg)` }}
-      className={`sticker pointer-events-none absolute hidden h-14 w-14 md:block ${className}`}>
+    <svg ref={ref} aria-hidden="true" viewBox="0 0 100 100" data-show={show ? 'true' : undefined}
+      style={{ '--r': `${rotate}deg`, transform: `rotate(${rotate}deg)` }}
+      className={`sticker pointer-events-none absolute z-30 hidden h-14 w-14 md:block ${className}`}>
       <path d={k.d} strokeWidth="5" strokeLinejoin="round" className={`${k.fill} stroke-brand-900`} />
     </svg>
   )
@@ -146,6 +162,92 @@ export function Sheet({ tone = 'white', first = false, max = 'max-w-7xl', classN
       {/* lapisan gelap saat tertimpa footer (dipakai PublicLayout) */}
       <div aria-hidden="true" data-recede className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] bg-brand-900 opacity-0" />
       <Container max={max}>{children}</Container>
+    </section>
+  )
+}
+
+// ===== LACI ARSIP (dipakai Beranda dan Info Kuota) =====
+// Hero bergeser naik seperti biasa. Setelah itu tiap section adalah map arsip yang menempel (sticky) di dalam laci:
+// map yang baru ditarik naik masih rebah ke belakang (tepi atasnya tetap rapat dengan map di depannya) lalu tegak, sedangkan map di depannya ikut rebah ke belakang
+// (sedikit mengecil dan menggelap) saat tertimpa. Map yang lebih tinggi dari layar menempel di dasar layar supaya
+// isinya sempat terbaca. Transform dipasang pada div dalam (bukan pada <section> yang sticky), sehingga posisi yang
+// dibaca untuk menghitung progres tidak terpengaruh transform sendiri. Per frame hanya `transform` + `opacity` yang berubah.
+const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
+const clamp01 = (v) => Math.min(Math.max(v, 0), 1)
+
+export function SlideStack({ className = '', watch, children }) {
+  const ref = useRef(null)
+
+  useEffect(() => {
+    const root = ref.current
+    if (!root || REDUCED) return
+    const slides = Array.from(root.querySelectorAll(':scope > section'))
+    let raf = 0
+
+    const measure = () => {
+      const vh = window.innerHeight
+      slides.forEach((el) => { el.style.top = `${Math.min(0, vh - el.offsetHeight)}px` })
+    }
+    const update = () => {
+      raf = 0
+      const vh = window.innerHeight || 1
+      // baca semua posisi dulu, baru tulis style (tanpa layout thrashing)
+      const own = slides.map((el) => el.getBoundingClientRect().top)
+      const nxt = slides.map((el) => el.nextElementSibling?.getBoundingClientRect().top ?? vh)
+      const dasar = slides.map((el) => el.getBoundingClientRect().bottom)
+      slides.forEach((el, i) => {
+        // Map terakhir (footer) lebih pendek dari layar sehingga tepi atasnya tak pernah mencapai 0: tanpa koreksi ini ia tetap miring saat
+        // halaman sudah di dasar dan tepi bawahnya terangkat beberapa px (menyisakan garis map di belakang). Maka ia dianggap tegak begitu dasarnya menyentuh dasar layar.
+        const posisi = i === slides.length - 1 ? Math.min(own[i], dasar[i] - vh) : own[i]
+        const q = clamp01(posisi / (vh * 0.85)) // 1 = map baru muncul dari bawah, 0 = sudah tegak
+        const p = clamp01(1 - nxt[i] / vh) // 0 = belum tertimpa, 1 = tertimpa penuh (map di bawah footer hanya mengecil sebagian, sesuai tinggi footer)
+        const e = el.firstElementChild // lapisan luar: map baru ditarik (tepi atas tetap di tempat)
+        const d = e.firstElementChild // lapisan dalam: map yang tertimpa (tepi bawah tetap di tempat)
+        e.style.transform = q ? `perspective(1800px) rotateX(${(-7 * q).toFixed(2)}deg)` : ''
+        d.style.transform = p ? `perspective(1800px) rotateX(${(5 * p).toFixed(2)}deg) scale(${(1 - 0.05 * p).toFixed(4)})` : ''
+        d.firstElementChild.style.opacity = String(p * 0.2)
+      })
+    }
+    const kick = () => { if (!raf) raf = requestAnimationFrame(update) }
+    const onResize = () => { measure(); kick() }
+
+    const ro = new ResizeObserver(onResize)
+    slides.forEach((el) => ro.observe(el))
+    measure()
+    update()
+    window.addEventListener('scroll', kick, { passive: true })
+    window.addEventListener('resize', onResize)
+    return () => {
+      ro.disconnect()
+      window.removeEventListener('scroll', kick)
+      window.removeEventListener('resize', onResize)
+      if (raf) cancelAnimationFrame(raf)
+    }
+  }, [watch]) // `watch`: ubah nilainya bila jumlah map berubah (mis. map yang muncul bersyarat) agar daftar map dibaca ulang
+
+  // pt-10 = ruang di bawah hero supaya sudut atas map 01 tidak menempel ke foto hero.
+  // Lapisan navy = bagian dalam laci: mengisi ruang itu (menyatu dengan hero), sudut atas map 01, dan sisi map saat mengecil.
+  return (
+    <div ref={ref} className={`relative z-10 shrink-0 overflow-x-clip pt-10 ${className}`}>
+      <div aria-hidden="true" className="absolute inset-0 bg-brand-900" />
+      {children}
+    </div>
+  )
+}
+
+// `lift` (hanya map pertama) = margin negatif agar map naik menimpa bawah hero tanpa menaikkan lapisan navy tumpukan (yang akan memotong foto hero).
+// Map ke-2 dst. dinaikkan (margin negatif) sehingga menimpa bagian bawah map sebelumnya sejak awal: tepi bawah map di belakang
+// tidak pernah terlihat sebagai potongan lurus, dan sudut atas membulat map di depan jatuh di atas kertas map sebelumnya.
+export function Slide({ no, first = no === '01', lift = '', overlap = '-mt-16 md:-mt-20', edge = 'border-brand-900', className = '', children, ...rest }) {
+  return (
+    <section {...rest} className={`${REDUCED ? 'relative' : 'sticky'} ${first ? lift : overlap}`}>
+      <div className="origin-top will-change-transform">
+      <div className={`relative origin-bottom will-change-transform rounded-t-[2rem] border-x-[1.5px] border-t-[1.5px] ${edge} shadow-[0_-2px_20px_rgba(0,0,0,0.06)] md:rounded-t-[56px] ${className}`}>
+        {/* lapisan gelap saat tertimpa map berikutnya (elemen pertama, dipakai SlideStack) */}
+        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] bg-brand-900 opacity-0" />
+        {children}
+      </div>
+      </div>
     </section>
   )
 }

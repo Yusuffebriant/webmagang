@@ -1,25 +1,17 @@
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import SafeImage from '../../components/SafeImage'
 import { FooterBody } from '../../components/Footer'
-import { Container, Eyebrow, FOTO_HERO, Reveal, Sticker, useHeroZoom } from '../../components/Motif'
+import useRuangFooter from '../../hooks/useRuangFooter'
+import { statusKuota } from '../../utils/kuota'
+import { Container, Eyebrow, FOTO_HERO, Reveal, Slide, SlideStack, Sticker, useHeroZoom } from '../../components/Motif'
 
 // Foto: taruh di public/images/ (hero-bkpsdm.jpg, gedung-bkpsdm.jpg, laptop.jpg). Kalau belum ada, tampil gradien.
 const FOTO_GEDUNG = '/images/tentang-instansi.jpg'
 const FOTO_MAHASISWI = '/images/mahasiswi-bingung.webp'
 const FOTO_DUO = '/images/duo-asn-mahasiswi.webp'
-
-const BIDANG_DEFAULT = [
-  'Pendamping Teknis Pranata Komputer',
-  'Pendamping Pengelola Keuangan & Administrasi',
-  'Pendamping Teknis Pengelola Arsip',
-  'Programer Teknologi Informasi Data Pegawai',
-  'Pendamping Komunikasi Publik, Website & Media Sosial',
-  'Pendamping Psikologi Uji Kompetensi & Potensi',
-  'Pendamping Pengelola Talent Pool & Kediklatan',
-]
 
 const tentangMenu = [
   { icon: 'target', title: 'Visi & Misi', desc: 'Tujuan dan arah kami', href: 'https://bkpsdm.jogjakota.go.id/page/visi-misi' },
@@ -29,107 +21,27 @@ const tentangMenu = [
 ]
 
 const persyaratan = [
-  'Mahasiswa aktif',
-  'Surat pengantar dari kampus',
-  'Bersedia mengikuti jadwal magang',
-  'Mengikuti ketentuan instansi',
-  'Melengkapi data pendaftaran',
+  'Pelajar SMA/SMK atau mahasiswa aktif (D1 sampai S1)',
+  'Surat pengantar dari sekolah/kampus (PDF, JPG, atau PNG, maks. 2MB)',
+  'Memilih minimal satu formasi yang kuotanya masih tersedia',
+  'Mengisi data diri lengkap (NIK, NIM, semester, WhatsApp & email aktif)',
+  'Menentukan periode magang (tanggal mulai dan selesai)',
+  'Menyetujui pernyataan kebenaran data dan aturan instansi',
 ]
 
 const alur = [
   ['Kenali Instansi', 'Pelajari profil dan informasi instansi.'],
-  ['Baca Informasi Magang', 'Pahami program, persyaratan, dan bidang yang tersedia.'],
-  ['Isi Formulir Pendaftaran', 'Lengkapi data dan unggah dokumen.'],
-  ['Verifikasi Data', 'Pemeriksaan kelengkapan dan kebenaran data.'],
-  ['Menunggu Hasil Seleksi', 'Informasi akan dikirim melalui email/website.'],
-  ['Mulai Magang', 'Selamat bergabung dengan tim kami!'],
+  ['Cek Kuota Formasi', 'Lihat formasi yang masih tersedia di halaman Info Kuota.'],
+  ['Isi Formulir', 'Lengkapi data, pilih formasi dan periode, lalu unggah dokumen.'],
+  ['Simpan Nomor Pendaftaran', 'Nomor dan bukti pendaftaran (PDF) diberikan setelah formulir terkirim.'],
+  ['Verifikasi Data', 'BKPSDM Kota Yogyakarta memeriksa kelengkapan dan kebenaran data.'],
+  ['Pantau di Cek Status', 'Hasil seleksi diumumkan di website.'],
 ]
 
 const kapital = (t) => (t ? t.charAt(0).toUpperCase() + t.slice(1) : t)
 
 // Jumlah formasi yang ditampilkan di kartu Program Magang (sisanya diringkas "+N formasi lainnya")
 const MAKS_FORMASI_TAMPIL = 5
-
-// ===== LACI ARSIP =====
-// Hero bergeser naik seperti biasa. Setelah itu tiap section adalah map arsip yang menempel (sticky) di dalam laci:
-// map yang baru ditarik naik masih rebah ke belakang (tepi atasnya tetap rapat dengan map di depannya) lalu tegak, sedangkan map di depannya ikut rebah ke belakang
-// (sedikit mengecil dan menggelap) saat tertimpa. Map yang lebih tinggi dari layar menempel di dasar layar supaya
-// isinya sempat terbaca. Transform dipasang pada div dalam (bukan pada <section> yang sticky), sehingga posisi yang
-// dibaca untuk menghitung progres tidak terpengaruh transform sendiri. Per frame hanya `transform` + `opacity` yang berubah.
-const REDUCED = typeof window !== 'undefined' && window.matchMedia('(prefers-reduced-motion: reduce)').matches
-const clamp01 = (v) => Math.min(Math.max(v, 0), 1)
-
-function SlideStack({ children }) {
-  const ref = useRef(null)
-
-  useEffect(() => {
-    const root = ref.current
-    if (!root || REDUCED) return
-    const slides = Array.from(root.querySelectorAll(':scope > section'))
-    let raf = 0
-
-    const measure = () => {
-      const vh = window.innerHeight
-      slides.forEach((el) => { el.style.top = `${Math.min(0, vh - el.offsetHeight)}px` })
-    }
-    const update = () => {
-      raf = 0
-      const vh = window.innerHeight || 1
-      // baca semua posisi dulu, baru tulis style (tanpa layout thrashing)
-      const own = slides.map((el) => el.getBoundingClientRect().top)
-      const nxt = slides.map((el) => el.nextElementSibling?.getBoundingClientRect().top ?? vh)
-      slides.forEach((el, i) => {
-        const q = clamp01(own[i] / (vh * 0.85)) // 1 = map baru muncul dari bawah, 0 = sudah tegak
-        const p = clamp01(1 - nxt[i] / vh) // 0 = belum tertimpa, 1 = tertimpa penuh
-        const e = el.firstElementChild // lapisan luar: map baru ditarik (tepi atas tetap di tempat)
-        const d = e.firstElementChild // lapisan dalam: map yang tertimpa (tepi bawah tetap di tempat)
-        e.style.transform = q ? `perspective(1800px) rotateX(${(-7 * q).toFixed(2)}deg)` : ''
-        d.style.transform = p ? `perspective(1800px) rotateX(${(5 * p).toFixed(2)}deg) scale(${(1 - 0.05 * p).toFixed(4)})` : ''
-        d.firstElementChild.style.opacity = String(p * 0.2)
-      })
-    }
-    const kick = () => { if (!raf) raf = requestAnimationFrame(update) }
-    const onResize = () => { measure(); kick() }
-
-    const ro = new ResizeObserver(onResize)
-    slides.forEach((el) => ro.observe(el))
-    measure()
-    update()
-    window.addEventListener('scroll', kick, { passive: true })
-    window.addEventListener('resize', onResize)
-    return () => {
-      ro.disconnect()
-      window.removeEventListener('scroll', kick)
-      window.removeEventListener('resize', onResize)
-      if (raf) cancelAnimationFrame(raf)
-    }
-  }, [])
-
-  // pt-10 = ruang di bawah hero supaya sudut atas map 01 tidak menempel ke foto hero.
-  // Lapisan navy = bagian dalam laci: mengisi ruang itu (menyatu dengan hero), sudut atas map 01, dan sisi map saat mengecil.
-  return (
-    <div ref={ref} className="relative z-10 overflow-x-clip pt-10">
-      <div aria-hidden="true" className="absolute inset-0 bg-brand-900" />
-      {children}
-    </div>
-  )
-}
-
-// Map ke-2 dst. dinaikkan (margin negatif) sehingga menimpa bagian bawah map sebelumnya sejak awal: tepi bawah map di belakang
-// tidak pernah terlihat sebagai potongan lurus, dan sudut atas membulat map di depan jatuh di atas kertas map sebelumnya.
-function Slide({ no, edge = 'border-brand-900', className = '', children, ...rest }) {
-  return (
-    <section {...rest} className={`${REDUCED ? 'relative' : 'sticky'} ${no === '01' ? '' : '-mt-16 md:-mt-20'}`}>
-      <div className="origin-top will-change-transform">
-      <div className={`relative origin-bottom will-change-transform rounded-t-[2rem] border-x-[1.5px] border-t-[1.5px] ${edge} shadow-[0_-2px_20px_rgba(0,0,0,0.06)] md:rounded-t-[56px] ${className}`}>
-        {/* lapisan gelap saat tertimpa map berikutnya (elemen pertama, dipakai SlideStack) */}
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-20 rounded-[inherit] bg-brand-900 opacity-0" />
-        {children}
-      </div>
-      </div>
-    </section>
-  )
-}
 
 // Kartu info kecil di section Program Magang
 function InfoItem({ icon, label, n, children }) {
@@ -146,14 +58,17 @@ function InfoItem({ icon, label, n, children }) {
 
 export default function Beranda() {
   const { sectionRef, innerRef } = useHeroZoom()
-  const [bidang, setBidang] = useState([])
+  const ruangFooter = useRuangFooter() // ruang kosong sebesar footer di bawah CTA (lihat hooks/useRuangFooter.js)
+  const [bidang, setBidang] = useState(null) // null = belum dimuat
+  const [bidangGagal, setBidangGagal] = useState(false)
   const [heroOn, setHeroOn] = useState(true) // false saat hero sudah di luar layar -> animasi masuk diputar ulang saat kembali
 
   useEffect(() => {
     let ignore = false
     api.get('/public/bidang')
-      .then((r) => { if (!ignore) setBidang(r.data.map((x) => x.nama_bidang)) })
-      .catch(() => {})
+      // Hanya formasi yang masih bisa dipilih (kuota belum penuh / tidak ditutup), sama seperti di formulir pendaftaran.
+      .then((r) => { if (!ignore) setBidang(r.data.filter((x) => statusKuota(x).bisaDipilih).map((x) => x.nama_bidang)) })
+      .catch(() => { if (!ignore) setBidangGagal(true) })
     return () => { ignore = true }
   }, [])
 
@@ -165,15 +80,15 @@ export default function Beranda() {
     return () => io.disconnect()
   }, [sectionRef])
 
-  const daftarBidang = (bidang.length ? bidang : BIDANG_DEFAULT).map(kapital)
+  const daftarBidang = (bidang ?? []).map(kapital)
   const sisaBidang = daftarBidang.length - MAKS_FORMASI_TAMPIL
 
-  // Disesuaikan dengan formulir pendaftaran: jenjang SMA/SMK sampai S2, individu/kelompok (ketua + maks. 9 anggota),
-  // periode & durasi diajukan sendiri oleh pendaftar (minggu/bulan), formasi dipilih dari daftar atau "Lainnya".
+  // Disesuaikan dengan formulir pendaftaran: jenjang SMA/SMK sampai S1, individu/kelompok (ketua + maks. 9 anggota),
+  // periode diisi pendaftar lewat tanggal mulai & selesai (durasi dihitung otomatis), formasi dipilih dari daftar atau "Lainnya".
   const infoProgram = [
-    { icon: 'cap', label: 'Peserta', value: 'Pelajar SMA/SMK dan mahasiswa D1 sampai S2' },
+    { icon: 'cap', label: 'Peserta', value: 'Pelajar SMA/SMK dan mahasiswa D1 sampai S1' },
     { icon: 'users', label: 'Bentuk Pendaftaran', value: 'Individu atau kelompok, maksimal 10 orang termasuk ketua' },
-    { icon: 'calendar', label: 'Periode & Durasi', value: 'Diajukan sendiri saat mendaftar, dalam satuan minggu atau bulan' },
+    { icon: 'calendar', label: 'Periode', value: 'Ditentukan sendiri lewat tanggal mulai dan selesai' },
   ]
 
   return (
@@ -213,7 +128,7 @@ export default function Beranda() {
           <Sticker kind="sparkle" rotate={12} className="top-0 right-4" />
           <Reveal>
             <Eyebrow>Tentang Instansi</Eyebrow>
-            <h2 className="text-4xl leading-tight font-semibold text-brand-900">Mengenal Lebih Dekat BKPSDM</h2>
+            <h2 className="text-4xl leading-tight font-semibold text-brand-900">Mengenal Lebih Dekat BKPSDM Kota Yogyakarta</h2>
             <p className="mt-4 text-base leading-relaxed text-slate-600">
               Badan Kepegawaian dan Pengembangan Sumber Daya Manusia (BKPSDM) Kota Yogyakarta merupakan instansi yang bertugas dalam pengelolaan kepegawaian, pengembangan kompetensi, dan peningkatan kualitas sumber daya manusia di lingkungan pemerintah daerah.
             </p>
@@ -254,7 +169,7 @@ export default function Beranda() {
             <Eyebrow>Program Magang</Eyebrow>
             <h2 className="text-3xl font-semibold text-brand-900">Informasi Program Magang</h2>
             <p className="mt-4 text-base leading-relaxed text-slate-600">
-              Program magang di BKPSDM memberikan kesempatan bagi pelajar dan mahasiswa untuk belajar langsung di lingkungan kerja profesional, mengembangkan kompetensi, dan menerapkan ilmu yang telah dipelajari.
+              Program magang di BKPSDM Kota Yogyakarta memberikan kesempatan bagi pelajar dan mahasiswa untuk belajar langsung di lingkungan kerja profesional, mengembangkan kompetensi, dan menerapkan ilmu yang telah dipelajari. Kuota formasi dihitung per orang (ketua dan anggota kelompok) dari pendaftar yang sudah diterima.
             </p>
             <Link to="/info-kuota"
               className="group mt-5 inline-flex items-center gap-2 rounded-full bg-brand-900 px-6 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600">
@@ -270,6 +185,9 @@ export default function Beranda() {
             ))}
             <InfoItem icon="briefcase" label="Formasi yang Tersedia" n={infoProgram.length}>
               <ul className="mt-1 list-disc space-y-0.5 pl-4 text-sm leading-snug text-slate-500 marker:text-brand-500">
+                {bidangGagal && <li className="list-none -ml-4">Daftar formasi belum bisa dimuat. Lihat di halaman Info Kuota.</li>}
+                {bidang === null && !bidangGagal && <li className="list-none -ml-4">Memuat formasi…</li>}
+                {bidang !== null && daftarBidang.length === 0 && <li className="list-none -ml-4">Saat ini semua formasi sedang penuh atau ditutup.</li>}
                 {daftarBidang.slice(0, MAKS_FORMASI_TAMPIL).map((b) => <li key={b}>{b}</li>)}
                 {sisaBidang > 0 && <li>+{sisaBidang} formasi lainnya</li>}
               </ul>
@@ -283,7 +201,7 @@ export default function Beranda() {
         {/* Karakter mahasiswi di kanan: berdiri dari dasar section (dipotong di tepi section, bagian bawahnya tertutup map berikutnya) */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 hidden overflow-hidden rounded-[inherit] lg:block">
           <div className="relative mx-auto h-full max-w-7xl px-6">
-            <div className="absolute right-6 bottom-0 h-[85%]">
+            <div className="absolute right-14 bottom-6 h-[85%]">
               <img src={FOTO_MAHASISWI} alt="" loading="lazy" decoding="async" className="h-full w-auto" />
               {/* awan pikiran */}
               <div className="absolute top-[3%] right-[82%] w-48 xl:w-56">
@@ -323,7 +241,7 @@ export default function Beranda() {
           <Eyebrow>Alur Pendaftaran</Eyebrow>
           <h2 className="text-3xl font-semibold text-brand-900">Mudah dan Terstruktur</h2>
           <p className="mt-2 text-base text-slate-600">
-            Ikuti langkah-langkah berikut untuk mendaftar program magang di <span className="text-brand-500">BKPSDM</span>.
+            Ikuti langkah-langkah berikut untuk mendaftar program magang di <span className="text-brand-500">BKPSDM Kota Yogyakarta</span>.
           </p>
           </Reveal>
           <ol className="mt-8 grid grid-cols-2 gap-x-4 gap-y-8 md:grid-cols-3 lg:grid-cols-6">
@@ -349,12 +267,12 @@ export default function Beranda() {
       </Slide>
 
       {/* CTA (versi ringkas) */}
-      <Slide no="05" className="flex min-h-[30rem] flex-col justify-end bg-white pt-10 pb-[4.5rem] md:min-h-[38rem] md:pb-28">
+      <Slide no="05" className="flex min-h-[30rem] flex-col justify-end bg-white pt-10 pb-[var(--pb,4.5rem)] md:min-h-[38rem] md:pb-[var(--pb,7rem)]" style={ruangFooter}>
         {/* Gambar berdiri di dasar section, di tengah, lapisan paling bawah, tanpa animasi sendiri (seperti gambar di section 3). Dasar gambar menempel di dasar section (bottom-0); bagian bawahnya tertutup map footer */}
         <div aria-hidden="true" className="pointer-events-none absolute inset-0 z-0 overflow-hidden rounded-[inherit]">
           <img src={FOTO_DUO} alt="" loading="lazy" decoding="async" className="absolute bottom-0 left-1/2 h-[28rem] w-auto max-w-none md:h-[36rem] -translate-x-1/2" />
         </div>
-        <Container className="relative z-10">
+        <Container className="absolute! inset-x-0 bottom-[4.5rem] md:bottom-28">
           <Reveal className="relative z-10 mx-auto flex max-w-3xl flex-col items-start gap-4 rounded-xl bg-brand-900 px-6 py-5 sm:flex-row sm:items-center md:h-32 md:gap-5 md:px-8">
             <span className="float-y flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
               <Icon name="cap" className="h-6 w-6" />
@@ -362,7 +280,7 @@ export default function Beranda() {
             <div className="flex-1">
               <h2 className="text-xl font-semibold text-white">Siap Menjadi Bagian dari Kami?</h2>
               <p className="mt-1 text-sm text-slate-300">
-                Daftarkan diri Anda sekarang dan raih pengalaman berharga bersama BKPSDM.
+                Daftarkan diri Anda sekarang dan raih pengalaman berharga bersama BKPSDM Kota Yogyakarta.
               </p>
             </div>
             <Link to="/pendaftaran"
@@ -372,7 +290,7 @@ export default function Beranda() {
           </Reveal>
         </Container>
       </Slide>
-        <Slide edge="border-brand-500" className="bg-brand-900 text-slate-300">
+        <Slide id="footer-slide" overlap="-mt-6 md:-mt-8" edge="border-brand-500" className="bg-brand-900 text-slate-300">
         <FooterBody />
       </Slide>
     </SlideStack>

@@ -23,11 +23,21 @@ body { color: #334155; -webkit-font-smoothing: antialiased; }
 h1, h2 { letter-spacing: 0; }
 section[id] { scroll-margin-top: 6rem; }
 
-/* Stiker bergoyang pelan di sekitar sudut miringnya (--r) */
-.sticker { animation: sticker-wobble 4s ease-in-out infinite; }
+/* Stiker: muncul pelan (membesar + berputar sedikit, jeda 0,5 dtk, durasi 1,1 dtk) saat masuk layar, lalu bergoyang pelan di sekitar sudut miringnya (--r) */
+.sticker { opacity: 0; }
+.sticker[data-show="true"] {
+  animation:
+    sticker-in 1100ms cubic-bezier(0.34, 1.4, 0.64, 1) 500ms both,
+    sticker-wobble 4s ease-in-out 1600ms infinite;
+}
+@keyframes sticker-in {
+  from { opacity: 0; transform: rotate(calc(var(--r) - 25deg)) scale(0.3); }
+  to { opacity: 1; transform: rotate(var(--r)) scale(1); }
+}
 @keyframes sticker-wobble {
-  0%, 100% { transform: rotate(calc(var(--r) - 3deg)); }
-  50% { transform: rotate(calc(var(--r) + 3deg)); }
+  0%, 100% { transform: rotate(var(--r)); }
+  25% { transform: rotate(calc(var(--r) - 3deg)); }
+  75% { transform: rotate(calc(var(--r) + 3deg)); }
 }
 
 /* Navbar kapsul turun dari atas saat halaman dibuka */
@@ -64,6 +74,7 @@ section[id] { scroll-margin-top: 6rem; }
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
-  .sticker, .rise-in, .float-y, .nav-drop { animation: none; }
+  .sticker, .rise-in, .float-y, .nav-drop { animation: none !important; }
+  .sticker { opacity: 1; }
   .pop-in, .line-draw { opacity: 1; transform: none; animation: none !important; }
 }

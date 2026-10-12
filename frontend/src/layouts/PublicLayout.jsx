@@ -10,7 +10,7 @@ export default function PublicLayout() {
   // Navbar melayang (fixed) menimpa konten. Beranda dan halaman dalam sama-sama dimulai dari hero foto navy (tiap halaman memasangnya sendiri).
   // Beranda membawa footer sendiri sebagai map terakhir di tumpukan; halaman dalam memakai Footer yang naik menimpa map terakhir.
   const { pathname } = useLocation()
-  const beranda = pathname === '/'
+  const beranda = ['/', '/info-kuota', '/pendaftaran', '/cek-status'].includes(pathname) // halaman bertumpuk: membawa footer sendiri sebagai map terakhir
   const rootRef = useRef(null)
   const mainRef = useRef(null)
 
