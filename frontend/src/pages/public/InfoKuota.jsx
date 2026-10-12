@@ -2,6 +2,9 @@ import { useEffect, useMemo, useState } from 'react'
 import { Link } from 'react-router-dom'
 import api from '../../api/client'
 import Icon from '../../components/Icon'
+import { FooterBody } from '../../components/Footer'
+import { Container, Eyebrow, PageHero, Reveal, Slide, SlideStack, Sticker } from '../../components/Motif'
+import useRuangFooter from '../../hooks/useRuangFooter'
 import { statusKuota } from '../../utils/kuota'
 
 // Kelompok status, urut dari yang paling berguna bagi pendaftar
@@ -12,23 +15,18 @@ const KELOMPOK = [
   { id: 'belum', judul: 'Kuota belum ditetapkan', ket: 'Menunggu penetapan dari BKPSDM', titik: 'bg-slate-400', kode: ['belum'] },
 ]
 
-const POLA_TITIK = {
-  backgroundImage: 'radial-gradient(rgba(255,255,255,0.16) 1.2px, transparent 1.2px)',
-  backgroundSize: '22px 22px',
-  maskImage: 'linear-gradient(to bottom, #000, transparent 85%)',
-  WebkitMaskImage: 'linear-gradient(to bottom, #000, transparent 85%)',
-}
+const BAYANGAN = 'shadow-[0_2px_20px_rgba(0,0,0,0.06)]'
 
 function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
   return (
-    <div className={`flex items-center gap-2.5 rounded-xl px-3 py-3 shadow-sm sm:gap-3 sm:px-4 ${gelap ? 'bg-brand-900 text-white' : 'border border-slate-200 bg-white'}`}>
-      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-lg ${gelap ? 'bg-white/15 text-white' : 'bg-brand-50 text-brand-500'}`}>
-        <Icon name={icon} className="h-4.5 w-4.5" />
+    <div className={`group flex h-full items-center gap-3 rounded-xl px-4 py-4 sm:gap-4 sm:px-5 ${BAYANGAN} ${gelap ? 'bg-brand-900 text-white' : 'border border-slate-100 bg-white'}`}>
+      <span className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-full transition-transform duration-300 group-hover:-rotate-6 group-hover:scale-110 ${gelap ? 'bg-white/15 text-white' : 'bg-brand-50 text-brand-500'}`}>
+        <Icon name={icon} className="h-6 w-6" />
       </span>
       <div className="min-w-0">
-        <p className={`text-[11px] font-semibold tracking-wide uppercase ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{judul}</p>
-        <p className={`text-xl leading-tight font-extrabold tabular-nums ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
-        {catatan && <p className={`text-[11px] ${gelap ? 'text-slate-300' : 'text-slate-400'}`}>{catatan}</p>}
+        <p className={`text-xs font-semibold tracking-wide uppercase ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{judul}</p>
+        <p className={`text-2xl leading-tight font-semibold tabular-nums sm:text-3xl ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
+        {catatan && <p className={`text-xs ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{catatan}</p>}
       </div>
     </div>
   )
@@ -40,10 +38,10 @@ function KartuFormasi({ f }) {
   const habis = st.kode === 'penuh' || st.kode === 'tutup'
 
   return (
-    <article className={`flex flex-col rounded-xl border p-4 shadow-sm transition ${habis ? 'border-slate-200 bg-slate-50' : 'border-slate-200 bg-white hover:shadow-md'}`}>
+    <article className={`flex h-full flex-col rounded-xl border p-4 transition ${BAYANGAN} ${habis ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-white hover:-translate-y-0.5 hover:shadow-[0_6px_28px_rgba(0,0,0,0.10)]'}`}>
       <div className="flex items-start justify-between gap-3">
-        <h3 className={`text-sm leading-snug font-bold ${habis ? 'text-slate-500' : 'text-brand-900'}`}>{f.nama_bidang}</h3>
-        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[11px] font-semibold ${st.badge}`}>{st.label}</span>
+        <h3 className={`text-sm leading-snug font-semibold ${habis ? 'text-slate-500' : 'text-brand-900'}`}>{f.nama_bidang}</h3>
+        <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.86rem] font-semibold ${st.badge}`}>{st.label}</span>
       </div>
       <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-slate-500">
         {f.deskripsi || 'Belum ada deskripsi untuk formasi ini.'}
@@ -52,10 +50,10 @@ function KartuFormasi({ f }) {
         {diatur ? (
           <>
             <div>
-              <p className={`text-2xl leading-none font-extrabold tabular-nums ${st.kode === 'hampir' ? 'text-amber-600' : habis ? 'text-slate-400' : 'text-brand-900'}`}>{f.sisa_kuota}</p>
-              <p className="mt-0.5 text-[11px] text-slate-500">kuota tersisa</p>
+              <p className={`text-2xl leading-none font-semibold tabular-nums ${st.kode === 'hampir' ? 'text-amber-600' : habis ? 'text-slate-400' : 'text-brand-900'}`}>{f.sisa_kuota}</p>
+              <p className="mt-0.5 text-[0.86rem] text-slate-500">kuota tersisa</p>
             </div>
-            <p className="text-[11px] text-slate-500">
+            <p className="text-[0.86rem] text-slate-500">
               <span className="font-semibold text-slate-700 tabular-nums">{f.terisi}</span> terisi dari{' '}
               <span className="font-semibold text-slate-700 tabular-nums">{f.kuota}</span>
             </p>
@@ -71,7 +69,7 @@ function KartuFormasi({ f }) {
 function Skeleton() {
   return (
     <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" aria-busy="true" aria-label="Memuat data">
-      {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-slate-200" />)}
+      {Array.from({ length: 8 }).map((_, i) => <div key={i} className="h-40 animate-pulse rounded-xl bg-brand-50" />)}
     </div>
   )
 }
@@ -93,6 +91,8 @@ export default function InfoKuota() {
 
   useEffect(() => { muat() }, [])
 
+  const adaData = !memuat && !gagal && formasi.length > 0
+
   const total = useMemo(() => {
     const diatur = formasi.filter((f) => f.kuota !== null)
     return {
@@ -109,114 +109,129 @@ export default function InfoKuota() {
     return KELOMPOK.map((k) => ({ ...k, isi: cocok.filter((f) => k.kode.includes(statusKuota(f).kode)) })).filter((k) => k.isi.length > 0)
   }, [formasi, cari])
   const jumlahTampil = kelompok.reduce((n, k) => n + k.isi.length, 0)
+  const ruangFooter = useRuangFooter() // ruang kosong sebesar footer di bawah daftar (lihat hooks/useRuangFooter.js)
 
   return (
-    <div className="relative overflow-hidden bg-slate-50 pb-10">
-      <div aria-hidden="true" className="pointer-events-none absolute top-[30rem] -left-32 h-96 w-96 rounded-full bg-brand-200/40 blur-3xl" />
-      <div aria-hidden="true" className="pointer-events-none absolute top-[60rem] -right-32 h-96 w-96 rounded-full bg-brand-100/80 blur-3xl" />
+    <>
+      <PageHero eyebrow="Sebelum Mendaftar" title={<>Info <span className="text-brand-500">Kuota Formasi</span> Magang</>}>
+        Cek ketersediaan kuota tiap formasi sebelum mendaftar.
+      </PageHero>
 
-      {/* Hero */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-brand-900 via-brand-900 to-brand-600 px-6 pt-8 pb-20 text-center">
-        <div aria-hidden="true" className="pointer-events-none absolute inset-0" style={POLA_TITIK} />
-        <div aria-hidden="true" className="pointer-events-none absolute -top-32 -right-24 h-96 w-96 rounded-full border-[48px] border-white/5" />
-        <div aria-hidden="true" className="pointer-events-none absolute -bottom-28 -left-20 h-72 w-72 rounded-full bg-brand-500/30 blur-3xl" />
-        <h1 className="relative text-2xl font-extrabold text-white sm:text-3xl">Info Kuota Formasi Magang</h1>
-        <p className="relative mx-auto mt-2 max-w-xl text-sm leading-relaxed text-slate-200">
-          Cek ketersediaan kuota tiap formasi sebelum mendaftar.
-        </p>
-      </div>
+      <SlideStack>
+        {/* KETERSEDIAAN FORMASI */}
+        <Slide first lift="-mt-24 md:-mt-30" className="bg-white pt-14 pb-[var(--pb,9rem)] md:pt-20" style={ruangFooter}>
+          <Container>
+            <Sticker kind="sparkle" rotate={12} className="-top-4 right-4" />
+            <Reveal className="max-md:text-center">
+              <Eyebrow>Ketersediaan Formasi</Eyebrow>
+              <h2 className="text-2xl font-semibold text-brand-900 sm:text-3xl">Pilih Formasi yang Sesuai</h2>
+              <p className="mt-2 max-w-2xl text-base leading-relaxed text-slate-600 max-md:mx-auto">
+                Lihat sisa kuota tiap formasi, lalu pilih yang paling cocok dengan minat dan bidang studi Anda.
+              </p>
+            </Reveal>
 
-      <div className="relative mx-auto -mt-10 max-w-7xl px-4 sm:px-6">
-        {/* Ringkasan */}
-        {!memuat && !gagal && formasi.length > 0 && (
-          <div className="grid grid-cols-2 gap-3 lg:grid-cols-4">
-            <Ringkasan judul="Total Formasi" nilai={total.formasi} icon="briefcase" />
-            <Ringkasan judul="Total Kuota" nilai={total.kuota} catatan="dari formasi yang sudah diatur" icon="users" />
-            <Ringkasan judul="Sudah Terisi" nilai={total.terisi} catatan="peserta diterima" icon="shieldCheck" />
-            <Ringkasan judul="Kuota Tersisa" nilai={total.sisa} icon="target" gelap />
-          </div>
-        )}
-
-        {/* Pencarian */}
-        <div className={`${!memuat && !gagal && formasi.length > 0 ? 'mt-4' : 'mt-2'} flex flex-col gap-2.5 rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:flex-row sm:items-center sm:justify-between`}>
-          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)}
-            placeholder="Cari nama formasi…" aria-label="Cari formasi"
-            className="w-full rounded-lg border border-slate-200 bg-slate-50 px-3.5 py-2 text-sm text-slate-800 focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none sm:max-w-sm" />
-          <ul className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-600">
-            {KELOMPOK.slice(0, 3).map((k) => (
-              <li key={k.id} className="inline-flex items-center gap-1.5">
-                <span aria-hidden="true" className={`h-2 w-2 rounded-full ${k.titik}`} />
-                {k.judul}: <span className="font-semibold text-slate-800 tabular-nums">{formasi.filter((f) => k.kode.includes(statusKuota(f).kode)).length}</span>
-              </li>
-            ))}
-          </ul>
-        </div>
-
-        {/* Daftar formasi */}
-        <div className="mt-4" aria-live="polite">
-          {memuat && <Skeleton />}
-
-          {gagal && !memuat && (
-            <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
-              <p className="text-sm text-amber-800">Data kuota belum bisa dimuat. Periksa koneksi lalu coba lagi.</p>
-              <button type="button" onClick={muat}
-                className="inline-flex items-center gap-2 rounded-lg border border-amber-300 bg-white px-4 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
-                <Icon name="refresh" className="h-4 w-4" /> Coba lagi
-              </button>
-            </div>
-          )}
-
-          {!memuat && !gagal && formasi.length === 0 && (
-            <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
-              Belum ada formasi magang yang dibuka.
-            </div>
-          )}
-
-          {!memuat && !gagal && formasi.length > 0 && (
-            jumlahTampil === 0 ? (
-              <div className="rounded-2xl border border-slate-200 bg-white px-6 py-12 text-center text-sm text-slate-500">
-                Tidak ada formasi yang cocok dengan pencarian Anda.
+            {/* Ringkasan */}
+            {adaData && (
+              <div className="mt-8 grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <Reveal variant="up" delay={0}><Ringkasan judul="Total Formasi" nilai={total.formasi} icon="briefcase" /></Reveal>
+                <Reveal variant="up" delay={100}><Ringkasan judul="Total Kuota" nilai={total.kuota} catatan="dari formasi yang sudah diatur" icon="users" /></Reveal>
+                <Reveal variant="up" delay={200}><Ringkasan judul="Sudah Terisi" nilai={total.terisi} catatan="peserta diterima" icon="shieldCheck" /></Reveal>
+                <Reveal variant="up" delay={300}><Ringkasan judul="Kuota Tersisa" nilai={total.sisa} icon="target" gelap /></Reveal>
               </div>
-            ) : (
-              <div className="space-y-7">
-                {kelompok.map((k) => (
-                  <section key={k.id} aria-labelledby={`kel-${k.id}`}>
-                    <div className="mb-3 flex items-center gap-2.5">
-                      <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${k.titik}`} />
-                      <h2 id={`kel-${k.id}`} className="text-sm font-bold text-brand-900">{k.judul}</h2>
-                      <span className="rounded-full bg-slate-200 px-2 py-0.5 text-[11px] font-semibold text-slate-600 tabular-nums">{k.isi.length}</span>
-                      <span className="hidden text-xs text-slate-400 sm:inline">{k.ket}</span>
-                    </div>
-                    <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                      {k.isi.map((f) => <KartuFormasi key={f.id} f={f} />)}
-                    </div>
-                  </section>
+            )}
+
+            {/* Pencarian & ringkasan status */}
+            <div className="mt-8 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+              <div className="relative w-full lg:max-w-sm">
+                <Icon name="search" className="pointer-events-none absolute top-1/2 left-4 h-4 w-4 -translate-y-1/2 text-slate-400" />
+                <input type="search" value={cari} onChange={(e) => setCari(e.target.value)}
+                  placeholder="Cari nama formasi…" aria-label="Cari formasi"
+                  className="w-full rounded-full border border-slate-200 bg-white py-3 pr-5 pl-11 text-sm text-slate-800 transition placeholder:text-slate-400 hover:border-slate-300 focus:border-brand-500 focus:ring-4 focus:ring-brand-500/10 focus:outline-none" />
+              </div>
+              <ul className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm text-slate-600 max-md:justify-center">
+                {KELOMPOK.slice(0, 3).map((k) => (
+                  <li key={k.id} className="inline-flex items-center gap-2">
+                    <span aria-hidden="true" className={`h-2 w-2 rounded-full ${k.titik}`} />
+                    {k.judul}: <span className="font-semibold text-slate-800 tabular-nums">{formasi.filter((f) => k.kode.includes(statusKuota(f).kode)).length}</span>
+                  </li>
                 ))}
-              </div>
-            )
-          )}
-        </div>
-
-        <p className="mt-4 text-[11px] leading-relaxed text-slate-500">
-          Kuota terisi dihitung per orang (ketua dan anggota kelompok) dari pendaftaran yang sudah berstatus <span className="font-semibold">diterima</span>.
-          Angka dapat berubah sewaktu-waktu mengikuti hasil verifikasi.
-        </p>
-
-        {/* Ajakan daftar */}
-        <div className="relative mt-6 overflow-hidden rounded-xl bg-gradient-to-br from-brand-900 via-brand-900 to-brand-600 px-5 py-4 text-center sm:px-6 sm:text-left">
-          <div aria-hidden="true" className="pointer-events-none absolute -top-16 -right-10 h-48 w-48 rounded-full bg-white/10 blur-xl" />
-          <div className="relative flex flex-col items-center gap-3 sm:flex-row sm:justify-between">
-            <div>
-              <h2 className="text-base font-bold text-white">Sudah menemukan formasi yang cocok?</h2>
-              <p className="text-xs text-slate-200">Isi formulir pendaftaran dan dapatkan nomor pendaftaran Anda.</p>
+              </ul>
             </div>
-            <Link to="/pendaftaran"
-              className="inline-flex shrink-0 items-center gap-2 rounded-lg bg-white px-5 py-2 text-sm font-semibold text-brand-900 transition hover:bg-brand-50">
-              Daftar Magang <Icon name="arrowRight" className="h-4 w-4" />
-            </Link>
-          </div>
-        </div>
-      </div>
-    </div>
+
+            {/* Daftar formasi */}
+            <div className="mt-6" aria-live="polite">
+              {memuat && <Skeleton />}
+
+              {gagal && !memuat && (
+                <div className="flex flex-col items-center gap-3 rounded-2xl border border-amber-200 bg-amber-50 px-6 py-10 text-center">
+                  <p className="text-sm text-amber-800">Data kuota belum bisa dimuat. Periksa koneksi lalu coba lagi.</p>
+                  <button type="button" onClick={muat}
+                    className="inline-flex items-center gap-2 rounded-full border border-amber-300 bg-white px-5 py-2 text-sm font-semibold text-amber-800 transition hover:bg-amber-100">
+                    <Icon name="refresh" className="h-4 w-4" /> Coba lagi
+                  </button>
+                </div>
+              )}
+
+              {!memuat && !gagal && formasi.length === 0 && (
+                <div className="rounded-2xl border border-slate-100 bg-brand-50 px-6 py-12 text-center text-sm text-slate-600">
+                  Belum ada formasi magang yang dibuka.
+                </div>
+              )}
+
+              {adaData && (
+                jumlahTampil === 0 ? (
+                  <div className="rounded-2xl border border-slate-100 bg-brand-50 px-6 py-12 text-center text-sm text-slate-600">
+                    Tidak ada formasi yang cocok dengan pencarian Anda.
+                  </div>
+                ) : (
+                  <div className="space-y-8">
+                    {kelompok.map((k) => (
+                      <section key={k.id} aria-labelledby={`kel-${k.id}`}>
+                        <div className="mb-3 flex items-center gap-2.5">
+                          <span aria-hidden="true" className={`h-2.5 w-2.5 rounded-full ${k.titik}`} />
+                          <h3 id={`kel-${k.id}`} className="text-base font-semibold text-brand-900">{k.judul}</h3>
+                          <span className="rounded-full bg-brand-50 px-2 py-0.5 text-[0.86rem] font-semibold text-slate-600 tabular-nums">{k.isi.length}</span>
+                          <span className="hidden text-xs text-slate-500 sm:inline">{k.ket}</span>
+                        </div>
+                        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+                          {k.isi.map((f) => <KartuFormasi key={f.id} f={f} />)}
+                        </div>
+                      </section>
+                    ))}
+                  </div>
+                )
+              )}
+            </div>
+
+            <p className="mt-6 text-xs leading-relaxed text-slate-500">
+              Kuota terisi dihitung per orang (ketua dan anggota kelompok) dari pendaftaran yang sudah berstatus <span className="font-semibold">diterima</span>.
+              Angka dapat berubah sewaktu-waktu mengikuti hasil verifikasi.
+            </p>
+
+            {/* Ajakan daftar */}
+            <Reveal className="mt-10 flex flex-col items-center gap-3 rounded-xl bg-brand-900 px-5 py-4 text-center sm:flex-row sm:items-center sm:text-left">
+              <span className="float-y flex h-10 w-10 shrink-0 items-center justify-center rounded-lg border border-white/20 bg-white/10 text-white">
+                <Icon name="cap" className="h-5 w-5" />
+              </span>
+              <div className="flex-1">
+                <h2 className="text-base font-semibold text-white">Sudah Menemukan Formasi yang Cocok?</h2>
+                <p className="mt-0.5 text-sm text-slate-300">
+                  Isi formulir pendaftaran dan dapatkan nomor pendaftaran Anda.
+                </p>
+              </div>
+              <Link to="/pendaftaran"
+                className="group inline-flex items-center gap-2 rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">
+                <Icon name="userPlus" className="h-4 w-4" /> Daftar Magang <Icon name="arrowRight" className="h-4 w-4 transition-transform duration-300 group-hover:translate-x-1" />
+              </Link>
+            </Reveal>
+          </Container>
+        </Slide>
+
+        {/* FOOTER (map terakhir) */}
+        <Slide id="footer-slide" overlap="-mt-6 md:-mt-8" edge="border-brand-500" className="bg-brand-900 text-slate-300">
+          <FooterBody />
+        </Slide>
+      </SlideStack>
+    </>
   )
 }

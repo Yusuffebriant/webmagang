@@ -88,7 +88,7 @@ function DialogTambah({ onTutup, onTersimpan }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !menyimpan) onTutup() }}>
       <form onSubmit={kirim} noValidate role="dialog" aria-modal="true" aria-labelledby="judul-tambah"
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
           <div>
             <h2 id="judul-tambah" className="text-base font-bold text-brand-900">Tambah Bidang Magang</h2>
@@ -174,7 +174,7 @@ function DialogHapus({ bidang, onTutup, onTerhapus }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !menghapus) onTutup() }}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="judul-hapus" aria-describedby="isi-hapus"
-        className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="px-6 py-5">
           <h2 id="judul-hapus" className="text-base font-bold text-brand-900">Hapus Bidang Magang</h2>
           <p id="isi-hapus" className="mt-2 text-sm text-slate-600">
@@ -339,7 +339,7 @@ export default function Kuota() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-left text-sm">
+                  <table className="w-full min-w-[47.5rem] text-left text-sm">
                     <thead className="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                       <tr>
                         <th className="px-5 py-3 font-semibold">Bidang</th>
