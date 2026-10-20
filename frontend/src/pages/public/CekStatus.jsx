@@ -5,6 +5,7 @@ import Icon, { CheckCircle } from '../../components/Icon'
 import { FooterBody } from '../../components/Footer'
 import { Container, Eyebrow, PageHero, Reveal, Slide, SlideStack, Sticker } from '../../components/Motif'
 import { rapikanNama } from '../../lib/status'
+import SertifikatPeserta from '../../components/SertifikatPeserta'
 
 // Format nomor dari backend: MGG-YYYYMM-0001
 const POLA_NOMOR = /^MGG-\d{6}-\d{4,}$/
@@ -243,6 +244,8 @@ export default function CekStatus() {
                       </Baris>
                       <Baris label="Tanggal Mendaftar">{tanggal(hasil.created_at)}</Baris>
                     </dl>
+
+                    {hasil.status === 'diterima' && hasil.sertifikat_tersedia && <SertifikatPeserta nomor={hasil.nomor_pendaftaran} />}
 
                     {hasil.status === 'ditolak' && (
                       <div className="rounded-xl border border-brand-200 bg-brand-50 px-5 py-5">

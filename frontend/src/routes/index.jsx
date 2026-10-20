@@ -8,6 +8,7 @@ import Login from '../pages/admin/Login'
 import Dashboard from '../pages/admin/Dashboard'
 import Pendaftar from '../pages/admin/Pendaftar'
 import Kuota from '../pages/admin/Kuota'
+import PengaturanSertifikat from '../pages/admin/PengaturanSertifikat'
 import AdminLayout from '../layouts/AdminLayout'
 import { akhiriSesiSekarang } from '../api/auth'
 import { getToken, sesiMasihValid, setNotice } from '../api/session'
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
             { index: true, element: <Dashboard /> },
             { path: 'pendaftar', element: <Pendaftar /> },
             { path: 'kuota', element: <Kuota /> },
+            { path: 'sertifikat', element: <PengaturanSertifikat /> },
         ],
     },
 ])
