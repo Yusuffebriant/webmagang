@@ -6,6 +6,7 @@ import { FooterBody } from '../../components/Footer'
 import { Container, Eyebrow, PageHero, Reveal, Slide, SlideStack, Sticker } from '../../components/Motif'
 import useRuangFooter from '../../hooks/useRuangFooter'
 import { statusKuota } from '../../utils/kuota'
+import { bacaDeskripsi, hitungTugas, ringkasDeskripsi } from '../../utils/deskripsi'
 
 // Kelompok status, urut dari yang paling berguna bagi pendaftar
 const KELOMPOK = [
@@ -32,19 +33,20 @@ function Ringkasan({ judul, nilai, catatan, icon, gelap = false }) {
   )
 }
 
-function KartuFormasi({ f }) {
+function KartuFormasi({ f, onBuka }) {
   const st = statusKuota(f)
   const diatur = f.kuota !== null && f.kuota > 0
   const habis = st.kode === 'penuh' || st.kode === 'tutup'
 
   return (
-    <article className={`flex h-full flex-col rounded-xl border p-4 transition ${BAYANGAN} ${habis ? 'border-slate-200 bg-slate-50' : 'border-slate-100 bg-white hover:-translate-y-0.5 hover:shadow-[0_6px_28px_rgba(0,0,0,0.10)]'}`}>
+    <button type="button" onClick={() => onBuka(f)} aria-haspopup="dialog" aria-label={`Lihat tugas bidang ${f.nama_bidang}`}
+      className={`flex h-full w-full cursor-pointer flex-col rounded-xl border p-4 text-left transition ${BAYANGAN} ${habis ? 'border-slate-200 bg-slate-50 hover:border-slate-300' : 'border-slate-100 bg-white hover:-translate-y-0.5 hover:border-brand-200 hover:shadow-[0_6px_28px_rgba(0,0,0,0.10)]'}`}>
       <div className="flex items-start justify-between gap-3">
         <h3 className={`text-sm leading-snug font-semibold ${habis ? 'text-slate-500' : 'text-brand-900'}`}>{f.nama_bidang}</h3>
         <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-[0.86rem] font-semibold ${st.badge}`}>{st.label}</span>
       </div>
       <p className="mt-1.5 line-clamp-2 min-h-[2.5rem] text-xs leading-relaxed text-slate-500">
-        {f.deskripsi || 'Belum ada deskripsi untuk formasi ini.'}
+        {ringkasDeskripsi(f.deskripsi) || 'Belum ada deskripsi untuk formasi ini.'}
       </p>
       <div className="mt-3 flex items-end justify-between border-t border-slate-100 pt-3">
         {diatur ? (
@@ -62,7 +64,89 @@ function KartuFormasi({ f }) {
           <p className="text-xs text-slate-500">{f.kuota === 0 ? 'Formasi sedang ditutup.' : 'Kuota belum ditetapkan.'}</p>
         )}
       </div>
-    </article>
+      <span className="mt-3 inline-flex items-center gap-1 text-xs font-semibold text-brand-500">
+        Lihat tugas magang <Icon name="chevronRight" className="h-3.5 w-3.5" />
+      </span>
+    </button>
+  )
+}
+
+// Jendela rincian: isi deskripsi (daftar tugas) ditata rapi
+function DetailBidang({ f, onTutup }) {
+  const st = statusKuota(f)
+  const diatur = f.kuota !== null && f.kuota > 0
+  const blok = useMemo(() => bacaDeskripsi(f.deskripsi), [f.deskripsi])
+  const jumlah = useMemo(() => hitungTugas(f.deskripsi), [f.deskripsi])
+
+  useEffect(() => {
+    const tekan = (e) => { if (e.key === 'Escape') onTutup() }
+    document.addEventListener('keydown', tekan)
+    const awal = document.body.style.overflow
+    document.body.style.overflow = 'hidden'
+    return () => { document.removeEventListener('keydown', tekan); document.body.style.overflow = awal }
+  }, [onTutup])
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-end justify-center bg-slate-900/50 p-0 sm:items-center sm:p-4"
+      onMouseDown={(e) => { if (e.target === e.currentTarget) onTutup() }}>
+      <div role="dialog" aria-modal="true" aria-labelledby="judul-detail"
+        className="flex max-h-[90dvh] w-full max-w-2xl flex-col overflow-hidden rounded-t-2xl bg-white shadow-xl sm:rounded-2xl">
+        <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-5 py-4 sm:px-6">
+          <div className="min-w-0">
+            <span className={`inline-flex rounded-full px-2.5 py-0.5 text-[0.86rem] font-semibold ${st.badge}`}>{st.label}</span>
+            <h2 id="judul-detail" className="mt-2 text-xl leading-snug font-semibold text-brand-900">{f.nama_bidang}</h2>
+            <p className="mt-1 text-xs text-slate-500">
+              {diatur ? <>Sisa kuota <span className="font-semibold text-slate-700 tabular-nums">{f.sisa_kuota}</span> dari <span className="font-semibold text-slate-700 tabular-nums">{f.kuota}</span></>
+                : f.kuota === 0 ? 'Formasi sedang ditutup' : 'Kuota belum ditetapkan'}
+            </p>
+          </div>
+          <button type="button" onClick={onTutup} aria-label="Tutup"
+            className="shrink-0 rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600">
+            <Icon name="close" className="h-5 w-5" />
+          </button>
+        </div>
+
+        <div className="overflow-y-auto px-5 py-5 sm:px-6">
+          <h3 className="flex items-center gap-2 text-sm font-semibold tracking-wide text-brand-500 uppercase">
+            Tugas selama magang
+            {jumlah > 0 && <span className="rounded-full bg-brand-50 px-2 py-0.5 text-xs text-brand-600 normal-case tabular-nums">{jumlah} tugas</span>}
+          </h3>
+          {blok.length === 0 ? (
+            <p className="mt-3 text-sm text-slate-500">Rincian tugas untuk bidang ini belum tersedia.</p>
+          ) : (
+            <div className="mt-3 space-y-4">
+              {blok.map((b, i) => {
+                if (b.jenis === 'paragraf') return <p key={i} className="text-sm leading-relaxed text-slate-700">{b.teks}</p>
+                if (b.jenis === 'subjudul') return <h4 key={i} className="border-l-4 border-brand-500 pl-3 text-sm font-semibold text-brand-900 first:mt-0 not-first:pt-2">{b.teks}</h4>
+                return (
+                  <ol key={i} className="space-y-2.5">
+                    {b.butir.map((t, j) => (
+                      <li key={j} className="flex gap-3 text-sm leading-relaxed text-slate-700">
+                        <span aria-hidden="true" className="mt-0.5 flex h-6 w-6 shrink-0 items-center justify-center rounded-full bg-brand-50 text-xs font-semibold text-brand-600 tabular-nums">{j + 1}</span>
+                        <span className="min-w-0 break-words">{t}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )
+              })}
+            </div>
+          )}
+        </div>
+
+        <div className="flex flex-col-reverse gap-2 border-t border-slate-100 px-5 py-4 sm:flex-row sm:justify-end sm:px-6">
+          <button type="button" onClick={onTutup}
+            className="rounded-full border border-slate-300 bg-white px-5 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500">
+            Tutup
+          </button>
+          {st.bisaDipilih && (
+            <Link to="/pendaftaran"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-brand-500 px-5 py-2 text-sm font-semibold text-white transition hover:bg-brand-600">
+              Daftar Magang <Icon name="arrowRight" className="h-4 w-4" />
+            </Link>
+          )}
+        </div>
+      </div>
+    </div>
   )
 }
 
@@ -79,6 +163,7 @@ export default function InfoKuota() {
   const [memuat, setMemuat] = useState(true)
   const [gagal, setGagal] = useState(false)
   const [cari, setCari] = useState('')
+  const [dipilihId, setDipilihId] = useState(null)
 
   const muat = () => {
     setMemuat(true)
@@ -108,6 +193,7 @@ export default function InfoKuota() {
     const cocok = formasi.filter((f) => !kata || f.nama_bidang.toLowerCase().includes(kata))
     return KELOMPOK.map((k) => ({ ...k, isi: cocok.filter((f) => k.kode.includes(statusKuota(f).kode)) })).filter((k) => k.isi.length > 0)
   }, [formasi, cari])
+  const dipilih = formasi.find((f) => f.id === dipilihId) ?? null
   const jumlahTampil = kelompok.reduce((n, k) => n + k.isi.length, 0)
   const ruangFooter = useRuangFooter() // ruang kosong sebesar footer di bawah daftar (lihat hooks/useRuangFooter.js)
 
@@ -194,7 +280,7 @@ export default function InfoKuota() {
                           <span className="hidden text-xs text-slate-500 sm:inline">{k.ket}</span>
                         </div>
                         <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
-                          {k.isi.map((f) => <KartuFormasi key={f.id} f={f} />)}
+                          {k.isi.map((f) => <KartuFormasi key={f.id} f={f} onBuka={(x) => setDipilihId(x.id)} />)}
                         </div>
                       </section>
                     ))}
@@ -232,6 +318,8 @@ export default function InfoKuota() {
           <FooterBody />
         </Slide>
       </SlideStack>
+
+      {dipilih && <DetailBidang f={dipilih} onTutup={() => setDipilihId(null)} />}
     </>
   )
 }

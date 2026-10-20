@@ -48,15 +48,15 @@ export async function unggahLoa(id, file) {
   return data.data ?? data
 }
 
-// GET /api/admin/kuota -> [{ id, nama_bidang, status, kuota|null, terisi, sisa|null, total_pendaftar }]
+// GET /api/admin/kuota -> [{ id, nama_bidang, deskripsi|null, status, kuota|null, terisi, sisa|null, total_pendaftar }]
 export async function getKuota(signal) {
   const { data } = await api.get('/admin/kuota', { signal })
   return data.data ?? data
 }
 
-// PATCH /api/admin/kuota/{id}  { kuota: number|null }  -> bidang terbaru
-export async function ubahKuota(id, kuota) {
-  const { data } = await api.patch(`/admin/kuota/${id}`, { kuota })
+// PATCH /api/admin/kuota/{id}  { nama_bidang, deskripsi?, kuota: number|null }  -> bidang terbaru
+export async function editBidang(id, payload) {
+  const { data } = await api.patch(`/admin/kuota/${id}`, payload)
   return data.data ?? data
 }
 

@@ -8,6 +8,7 @@ use App\Models\BidangMagang;
 use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Validation\Rule;
 
 class KuotaController extends Controller
 {
@@ -27,13 +28,12 @@ class KuotaController extends Controller
 
         $data = $request->validate([
             'nama_bidang' => ['required', 'string', 'max:100', 'unique:bidang_magang,nama_bidang'],
-            'deskripsi'   => ['nullable', 'string', 'max:500'],
+            'deskripsi'   => ['nullable', 'string'],
             'kuota'       => ['nullable', 'integer', 'min:0', 'max:1000'],
         ], [
             'nama_bidang.required' => 'Nama bidang wajib diisi.',
             'nama_bidang.max'      => 'Nama bidang maksimal 100 karakter.',
             'nama_bidang.unique'   => 'Nama bidang sudah terdaftar.',
-            'deskripsi.max'        => 'Deskripsi maksimal 500 karakter.',
             'kuota.integer'        => 'Kuota harus berupa angka bulat.',
             'kuota.min'            => 'Kuota tidak boleh kurang dari 0.',
             'kuota.max'            => 'Kuota maksimal 1000.',
@@ -59,13 +59,23 @@ class KuotaController extends Controller
             ], 500);
         }
 
+        // Rapikan spasi berlebih pada nama sebelum divalidasi
+        $request->merge([
+            'nama_bidang' => preg_replace('/\s+/', ' ', trim((string) $request->input('nama_bidang'))),
+        ]);
+
         $data = $request->validate([
-            'kuota' => ['present', 'nullable', 'integer', 'min:0', 'max:1000'],
+            'nama_bidang' => ['required', 'string', 'max:100', Rule::unique('bidang_magang', 'nama_bidang')->ignore($bidang->id)],
+            'deskripsi'   => ['nullable', 'string'],
+            'kuota'       => ['present', 'nullable', 'integer', 'min:0', 'max:1000'],
         ], [
-            'kuota.present' => 'Kuota wajib dikirim.',
-            'kuota.integer' => 'Kuota harus berupa angka bulat.',
-            'kuota.min'     => 'Kuota tidak boleh kurang dari 0.',
-            'kuota.max'     => 'Kuota maksimal 1000.',
+            'nama_bidang.required' => 'Nama bidang wajib diisi.',
+            'nama_bidang.max'      => 'Nama bidang maksimal 100 karakter.',
+            'nama_bidang.unique'   => 'Nama bidang sudah terdaftar.',
+            'kuota.present'        => 'Kuota wajib dikirim.',
+            'kuota.integer'        => 'Kuota harus berupa angka bulat.',
+            'kuota.min'            => 'Kuota tidak boleh kurang dari 0.',
+            'kuota.max'            => 'Kuota maksimal 1000.',
         ]);
 
         $kuota = $data['kuota'] ?? null;
@@ -79,7 +89,11 @@ class KuotaController extends Controller
             return response()->json(['message' => $pesan, 'errors' => ['kuota' => [$pesan]]], 422);
         }
 
-        $bidang->kuota = $kuota;
+        $deskripsi = isset($data['deskripsi']) ? trim($data['deskripsi']) : '';
+
+        $bidang->nama_bidang = $data['nama_bidang'];
+        $bidang->deskripsi   = $deskripsi === '' ? null : $deskripsi;
+        $bidang->kuota       = $kuota;
         $bidang->save();
 
         // Baca ulang dari database untuk memastikan nilai benar-benar tersimpan
@@ -100,7 +114,7 @@ class KuotaController extends Controller
         $pesan = 'Bidang tidak dapat dihapus karena sudah memiliki pendaftar.';
         $tolak = fn () => response()->json(['message' => $pesan, 'errors' => ['bidang' => [$pesan]]], 422);
 
-        if ($bidang->pendaftar()->exists() || $bidang->anggota()->exists()) {
+        if ($bidang->pendaftar()->exists() || (BidangMagang::punyaAnggota() && $bidang->anggota()->exists())) {
             return $tolak();
         }
 
@@ -127,6 +141,7 @@ class KuotaController extends Controller
         return [
             'id'               => $b->id,
             'nama_bidang'      => $b->nama_bidang,
+            'deskripsi'        => $b->deskripsi,
             'status'           => $b->status,
             'kuota'            => $kuota,
             'terisi'           => $terisi,
