@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import { editBidang, getKuota, hapusBidang, tambahBidang } from '../../api/admin'
 import Icon from '../../components/Icon'
+import { hitungTugas } from '../../utils/deskripsi'
 
 const BATAS_MAKS = 1000
 
@@ -65,7 +66,6 @@ function DialogBidang({ bidang, onTutup, onTersimpan }) {
     const lokal = {}
     if (!nama) lokal.nama_bidang = 'Nama bidang wajib diisi.'
     else if (nama.length > 100) lokal.nama_bidang = 'Nama bidang maksimal 100 karakter.'
-    if (form.deskripsi.length > 500) lokal.deskripsi = 'Deskripsi maksimal 500 karakter.'
     if (kuotaTeks !== '' && !/^\d+$/.test(kuotaTeks)) lokal.kuota = 'Kuota harus berupa angka bulat (0 atau lebih).'
     else if (kuotaTeks !== '' && Number(kuotaTeks) > BATAS_MAKS) lokal.kuota = `Kuota maksimal ${BATAS_MAKS}.`
     else if (mengedit && kuotaTeks !== '' && Number(kuotaTeks) < bidang.terisi) lokal.kuota = `Kuota tidak boleh lebih kecil dari jumlah yang sudah diterima (${bidang.terisi}).`
@@ -128,10 +128,16 @@ function DialogBidang({ bidang, onTutup, onTersimpan }) {
 
           <div>
             <label htmlFor="deskripsi" className="text-sm font-semibold text-brand-900">Deskripsi</label>
-            <textarea id="deskripsi" rows={3} maxLength={500} value={form.deskripsi} onChange={isi('deskripsi')}
-              placeholder="Opsional. Uraian singkat ruang lingkup bidang."
-              aria-invalid={Boolean(galat.deskripsi)}
-              className={`${inputCls} resize-none ${galat.deskripsi ? inputBad : inputOk}`} />
+            <textarea id="deskripsi" rows={8} value={form.deskripsi} onChange={isi('deskripsi')}
+              placeholder={"Opsional. Tulis tugas selama magang, satu tugas per baris.\nContoh:\nMembantu menyusun dokumen perencanaan kepegawaian\nMerekap data usulan formasi ASN"}
+              aria-invalid={Boolean(galat.deskripsi)} aria-describedby="bantu-deskripsi"
+              className={`${inputCls} min-h-32 resize-y ${galat.deskripsi ? inputBad : inputOk}`} />
+            <p id="bantu-deskripsi" className="mt-1.5 text-xs text-slate-400">
+              Tanpa batas huruf. Boleh paste langsung dari PDF/Word: setiap baris bernomor (1., 2., ...) dihitung satu tugas dan kalimat yang terpotong disambung otomatis. Tanpa nomor, satu baris = satu tugas.
+            </p>
+            {hitungTugas(form.deskripsi) > 0 && (
+              <p className="mt-1 text-xs font-semibold text-brand-600">Terdeteksi {hitungTugas(form.deskripsi)} tugas</p>
+            )}
             {galat.deskripsi && <p role="alert" className="mt-1.5 text-xs text-red-600">{galat.deskripsi}</p>}
           </div>
 

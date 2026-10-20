@@ -28,13 +28,12 @@ class KuotaController extends Controller
 
         $data = $request->validate([
             'nama_bidang' => ['required', 'string', 'max:100', 'unique:bidang_magang,nama_bidang'],
-            'deskripsi'   => ['nullable', 'string', 'max:500'],
+            'deskripsi'   => ['nullable', 'string'],
             'kuota'       => ['nullable', 'integer', 'min:0', 'max:1000'],
         ], [
             'nama_bidang.required' => 'Nama bidang wajib diisi.',
             'nama_bidang.max'      => 'Nama bidang maksimal 100 karakter.',
             'nama_bidang.unique'   => 'Nama bidang sudah terdaftar.',
-            'deskripsi.max'        => 'Deskripsi maksimal 500 karakter.',
             'kuota.integer'        => 'Kuota harus berupa angka bulat.',
             'kuota.min'            => 'Kuota tidak boleh kurang dari 0.',
             'kuota.max'            => 'Kuota maksimal 1000.',
@@ -67,13 +66,12 @@ class KuotaController extends Controller
 
         $data = $request->validate([
             'nama_bidang' => ['required', 'string', 'max:100', Rule::unique('bidang_magang', 'nama_bidang')->ignore($bidang->id)],
-            'deskripsi'   => ['nullable', 'string', 'max:500'],
+            'deskripsi'   => ['nullable', 'string'],
             'kuota'       => ['present', 'nullable', 'integer', 'min:0', 'max:1000'],
         ], [
             'nama_bidang.required' => 'Nama bidang wajib diisi.',
             'nama_bidang.max'      => 'Nama bidang maksimal 100 karakter.',
             'nama_bidang.unique'   => 'Nama bidang sudah terdaftar.',
-            'deskripsi.max'        => 'Deskripsi maksimal 500 karakter.',
             'kuota.present'        => 'Kuota wajib dikirim.',
             'kuota.integer'        => 'Kuota harus berupa angka bulat.',
             'kuota.min'            => 'Kuota tidak boleh kurang dari 0.',
