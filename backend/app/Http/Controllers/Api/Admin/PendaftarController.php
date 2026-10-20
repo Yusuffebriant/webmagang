@@ -3,7 +3,7 @@
 namespace App\Http\Controllers\Api\Admin;
 
 use App\Enums\StatusPendaftar;
-use App\Exports\PendaftarExport;
+use App\Exports\DaftarMagangExport;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PendaftarResource;
 use App\Models\BidangMagang;
@@ -130,6 +130,6 @@ class PendaftarController extends Controller
 
     public function export()
     {
-        return Excel::download(new PendaftarExport, 'data-pendaftar-' . now()->format('Ymd-His') . '.xlsx');
+        return Excel::download(new DaftarMagangExport, 'daftar-magang-' . now()->format('Ymd-His') . '.xlsx');
     }
 }
