@@ -1,15 +1,16 @@
 import { useCallback, useEffect, useState } from 'react'
-import { getKuota, hapusBidang, tambahBidang, ubahKuota } from '../../api/admin'
+import { editBidang, getKuota, hapusBidang, tambahBidang } from '../../api/admin'
 import Icon from '../../components/Icon'
 
 const BATAS_MAKS = 1000
 
-// Label & warna penanda tiap bidang
+// Label & warna penanda tiap bidang.
+// Hampir penuh = sudah ada yang terisi dan sisa kuota tinggal 1-2 orang.
 function penanda(b) {
   if (b.kuota === null) return { label: 'Belum diatur', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300' }
   if (b.kuota === 0) return { label: 'Ditutup', badge: 'bg-slate-100 text-slate-600', bar: 'bg-slate-300' }
   if (b.sisa === 0) return { label: 'Penuh', badge: 'bg-red-50 text-red-700', bar: 'bg-red-500' }
-  if (b.sisa / b.kuota <= 0.2) return { label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500' }
+  if (b.terisi > 0 && b.sisa <= 2) return { label: 'Hampir penuh', badge: 'bg-amber-50 text-amber-700', bar: 'bg-amber-500' }
   return { label: 'Tersedia', badge: 'bg-emerald-50 text-emerald-700', bar: 'bg-emerald-500' }
 }
 
@@ -28,7 +29,7 @@ function Kartu({ judul, nilai, catatan, gelap = false }) {
   return (
     <div className={`rounded-2xl p-5 shadow-sm ${gelap ? 'bg-brand-900 text-white' : 'border border-slate-200 bg-white'}`}>
       <p className={`text-sm font-medium ${gelap ? 'text-slate-300' : 'text-slate-500'}`}>{judul}</p>
-      <p className={`mt-3 text-4xl font-extrabold tabular-nums ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
+      <p className={`mt-3 text-2xl font-semibold tabular-nums sm:text-3xl ${gelap ? '' : 'text-brand-900'}`}>{nilai}</p>
       {catatan && <p className={`mt-1 text-xs ${gelap ? 'text-slate-300' : 'text-slate-400'}`}>{catatan}</p>}
     </div>
   )
@@ -38,8 +39,14 @@ const inputCls = 'mt-1.5 w-full rounded-lg border px-3.5 py-2.5 text-sm text-sla
 const inputOk = 'border-slate-300 focus:border-brand-500 focus:ring-brand-500/20'
 const inputBad = 'border-red-400 focus:border-red-500 focus:ring-red-500/20'
 
-function DialogTambah({ onTutup, onTersimpan }) {
-  const [form, setForm] = useState({ nama_bidang: '', deskripsi: '', kuota: '' })
+// Dialog untuk tambah bidang (tanpa prop `bidang`) dan edit bidang (dengan prop `bidang`)
+function DialogBidang({ bidang, onTutup, onTersimpan }) {
+  const mengedit = Boolean(bidang)
+  const [form, setForm] = useState({
+    nama_bidang: bidang?.nama_bidang ?? '',
+    deskripsi: bidang?.deskripsi ?? '',
+    kuota: bidang?.kuota == null ? '' : String(bidang.kuota),
+  })
   const [galat, setGalat] = useState({})
   const [menyimpan, setMenyimpan] = useState(false)
 
@@ -61,23 +68,25 @@ function DialogTambah({ onTutup, onTersimpan }) {
     if (form.deskripsi.length > 500) lokal.deskripsi = 'Deskripsi maksimal 500 karakter.'
     if (kuotaTeks !== '' && !/^\d+$/.test(kuotaTeks)) lokal.kuota = 'Kuota harus berupa angka bulat (0 atau lebih).'
     else if (kuotaTeks !== '' && Number(kuotaTeks) > BATAS_MAKS) lokal.kuota = `Kuota maksimal ${BATAS_MAKS}.`
+    else if (mengedit && kuotaTeks !== '' && Number(kuotaTeks) < bidang.terisi) lokal.kuota = `Kuota tidak boleh lebih kecil dari jumlah yang sudah diterima (${bidang.terisi}).`
     if (Object.keys(lokal).length) return setGalat(lokal)
 
     setMenyimpan(true)
     setGalat({})
     try {
-      const baru = await tambahBidang({
+      const payload = {
         nama_bidang: nama,
         deskripsi: form.deskripsi.trim() || null,
         kuota: kuotaTeks === '' ? null : Number(kuotaTeks),
-      })
-      onTersimpan(baru)
+      }
+      const hasil = mengedit ? await editBidang(bidang.id, payload) : await tambahBidang(payload)
+      onTersimpan(hasil)
     } catch (err) {
       const er = err.response?.data?.errors
       if (er) {
         setGalat({ nama_bidang: er.nama_bidang?.[0], deskripsi: er.deskripsi?.[0], kuota: er.kuota?.[0] })
       } else {
-        setGalat({ umum: err.response ? 'Gagal menyimpan bidang. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.' })
+        setGalat({ umum: er === undefined && err.response?.data?.message && err.response.status >= 500 ? err.response.data.message : (err.response ? 'Gagal menyimpan bidang. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.') })
       }
       setMenyimpan(false)
     }
@@ -86,12 +95,16 @@ function DialogTambah({ onTutup, onTersimpan }) {
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !menyimpan) onTutup() }}>
-      <form onSubmit={kirim} noValidate role="dialog" aria-modal="true" aria-labelledby="judul-tambah"
-        className="w-full max-w-lg rounded-2xl bg-white shadow-xl">
+      <form onSubmit={kirim} noValidate role="dialog" aria-modal="true" aria-labelledby="judul-bidang"
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-lg overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="flex items-start justify-between gap-4 border-b border-slate-100 px-6 py-4">
           <div>
-            <h2 id="judul-tambah" className="text-base font-bold text-brand-900">Tambah Bidang Magang</h2>
-            <p className="text-xs text-slate-400">Bidang baru langsung berstatus aktif dan tampil pada form pendaftaran.</p>
+            <h2 id="judul-bidang" className="text-base font-semibold text-brand-900">{mengedit ? 'Edit Bidang Magang' : 'Tambah Bidang Magang'}</h2>
+            <p className="text-xs text-slate-400">
+              {mengedit
+                ? 'Ubah nama, deskripsi, dan kuota bidang. Keterangan terisi otomatis dari kuota.'
+                : 'Bidang baru langsung berstatus aktif dan tampil pada form pendaftaran.'}
+            </p>
           </div>
           <button type="button" onClick={onTutup} disabled={menyimpan} aria-label="Tutup"
             className="rounded-lg p-1.5 text-slate-400 transition hover:bg-slate-100 hover:text-slate-600 disabled:opacity-50">
@@ -124,11 +137,14 @@ function DialogTambah({ onTutup, onTersimpan }) {
 
           <div>
             <label htmlFor="kuota-baru" className="text-sm font-semibold text-brand-900">Kuota</label>
-            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={isi('kuota')}
+            <input id="kuota-baru" type="text" inputMode="numeric" value={form.kuota} onChange={(e) => isi('kuota')({ target: { value: e.target.value.replace(/\D/g, '') } })} maxLength={6} pattern="[0-9]*"
               placeholder="Kosongkan bila tanpa batas"
               aria-invalid={Boolean(galat.kuota)}
               className={`${inputCls} sm:w-56 ${galat.kuota ? inputBad : inputOk}`} />
             {galat.kuota && <p role="alert" className="mt-1.5 text-xs text-red-600">{galat.kuota}</p>}
+            {mengedit && bidang.terisi > 0 && !galat.kuota && (
+              <p className="mt-1.5 text-xs text-slate-400">Minimal {bidang.terisi} (jumlah peserta yang sudah diterima).</p>
+            )}
           </div>
         </div>
 
@@ -139,7 +155,7 @@ function DialogTambah({ onTutup, onTersimpan }) {
           </button>
           <button type="submit" disabled={menyimpan}
             className="rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60">
-            {menyimpan ? 'Menyimpan...' : 'Simpan Bidang'}
+            {menyimpan ? 'Menyimpan...' : mengedit ? 'Simpan Perubahan' : 'Simpan Bidang'}
           </button>
         </div>
       </form>
@@ -173,9 +189,9 @@ function DialogHapus({ bidang, onTutup, onTerhapus }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !menghapus) onTutup() }}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="judul-hapus" aria-describedby="isi-hapus"
-        className="w-full max-w-md rounded-2xl bg-white shadow-xl">
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-md overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="px-6 py-5">
-          <h2 id="judul-hapus" className="text-base font-bold text-brand-900">Hapus Bidang Magang</h2>
+          <h2 id="judul-hapus" className="text-base font-semibold text-brand-900">Hapus Bidang Magang</h2>
           <p id="isi-hapus" className="mt-2 text-sm text-slate-600">
             Bidang <span className="font-semibold text-brand-900">{bidang.nama_bidang}</span> akan dihapus permanen
             dan tidak lagi tampil pada form pendaftaran. Tindakan ini tidak dapat dibatalkan.
@@ -202,11 +218,9 @@ export default function Kuota() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
 
-  const [edit, setEdit] = useState(null) // { id, nilai }
-  const [menyimpan, setMenyimpan] = useState(false)
-  const [galat, setGalat] = useState('')
   const [info, setInfo] = useState('')
   const [dialogTambah, setDialogTambah] = useState(false)
+  const [bidangEdit, setBidangEdit] = useState(null)
   const [bidangHapus, setBidangHapus] = useState(null)
 
   const muat = useCallback(async (signal) => {
@@ -229,40 +243,11 @@ export default function Kuota() {
     return () => ctrl.abort()
   }, [muat])
 
-  function mulaiUbah(b) {
-    setEdit({ id: b.id, nilai: b.kuota === null ? '' : String(b.kuota) })
-    setGalat('')
-    setInfo('')
-  }
-
-  function batal() {
-    setEdit(null)
-    setGalat('')
-  }
-
-  async function simpan(b) {
-    const mentah = edit.nilai.trim()
-    let kuota = null
-    if (mentah !== '') {
-      if (!/^\d+$/.test(mentah)) return setGalat('Kuota harus berupa angka bulat (0 atau lebih).')
-      kuota = Number(mentah)
-      if (kuota > BATAS_MAKS) return setGalat(`Kuota maksimal ${BATAS_MAKS}.`)
-      if (kuota < b.terisi) return setGalat(`Kuota tidak boleh lebih kecil dari jumlah yang sudah diterima (${b.terisi}).`)
-    }
-
-    setMenyimpan(true)
-    setGalat('')
-    try {
-      const baru = await ubahKuota(b.id, kuota)
-      setDaftar((arr) => arr.map((x) => (x.id === baru.id ? baru : x)))
-      setEdit(null)
-      setInfo(`Kuota bidang ${baru.nama_bidang} berhasil disimpan.`)
-    } catch (e) {
-      setGalat(e.response?.data?.errors?.kuota?.[0] ?? (e.response ? 'Gagal menyimpan kuota. Silakan coba lagi.' : 'Tidak dapat terhubung ke server.'))
-    } finally {
-      setMenyimpan(false)
-    }
-  }
+  const bidangDiedit = useCallback((baru) => {
+    setDaftar((arr) => arr.map((x) => (x.id === baru.id ? baru : x)).sort((a, b) => a.nama_bidang.localeCompare(b.nama_bidang, 'id')))
+    setBidangEdit(null)
+    setInfo(`Bidang ${baru.nama_bidang} berhasil diperbarui.`)
+  }, [])
 
   const bidangBaru = useCallback((baru) => {
     setDaftar((arr) => [...(arr ?? []), baru].sort((a, b) => a.nama_bidang.localeCompare(b.nama_bidang, 'id')))
@@ -273,7 +258,6 @@ export default function Kuota() {
   const bidangTerhapus = useCallback((b) => {
     setDaftar((arr) => arr.filter((x) => x.id !== b.id))
     setBidangHapus(null)
-    setEdit((e) => (e?.id === b.id ? null : e))
     setInfo(`Bidang ${b.nama_bidang} berhasil dihapus.`)
   }, [])
 
@@ -288,7 +272,7 @@ export default function Kuota() {
     <div>
       <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-2xl font-extrabold tracking-tight text-brand-900">Kuota Magang</h1>
+          <h1 className="text-2xl font-semibold text-brand-900 sm:text-3xl">Kuota Magang</h1>
           <p className="mt-1 text-sm text-slate-500">Atur jumlah kuota tiap bidang dan pantau sisa kuota yang tersedia.</p>
         </div>
         <button type="button" onClick={() => muat()} disabled={loading}
@@ -322,7 +306,7 @@ export default function Kuota() {
             <section className="rounded-2xl border border-slate-200 bg-white shadow-sm">
               <div className="flex flex-wrap items-center justify-between gap-3 border-b border-slate-100 px-5 py-4 sm:px-6">
                 <div className="min-w-0">
-                  <h2 className="text-base font-bold text-brand-900">Kuota per Bidang</h2>
+                  <h2 className="text-base font-semibold text-brand-900">Kuota per Bidang</h2>
                   <p className="text-xs text-slate-400">Kuota yang terpakai dihitung dari pendaftar berstatus Diterima. Kosongkan kuota bila tidak ingin dibatasi.</p>
                 </div>
                 <button type="button" onClick={() => { setDialogTambah(true); setInfo('') }}
@@ -338,10 +322,11 @@ export default function Kuota() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[760px] text-left text-sm">
+                  <table className="w-full min-w-[58rem] text-left text-sm">
                     <thead className="bg-slate-50 text-xs tracking-wide text-slate-500 uppercase">
                       <tr>
                         <th className="px-5 py-3 font-semibold">Bidang</th>
+                        <th className="px-3 py-3 font-semibold">Deskripsi</th>
                         <th className="px-3 py-3 font-semibold">Keterangan</th>
                         <th className="px-3 py-3 text-center font-semibold">Kuota</th>
                         <th className="px-3 py-3 text-center font-semibold">Diterima</th>
@@ -354,7 +339,6 @@ export default function Kuota() {
                       {daftar.map((b) => {
                         const p = penanda(b)
                         const persen = b.kuota > 0 ? Math.min(Math.round((b.terisi / b.kuota) * 100), 100) : 0
-                        const sedangUbah = edit?.id === b.id
 
                         return (
                           <tr key={b.id} className="align-top">
@@ -364,32 +348,21 @@ export default function Kuota() {
                                 {b.total_pendaftar} pendaftar{b.status !== 'aktif' ? ' · Bidang nonaktif' : ''}
                               </p>
                             </td>
+                            <td className="max-w-[16rem] px-3 py-3.5">
+                              {b.deskripsi ? (
+                                <p title={b.deskripsi} className="line-clamp-2 text-xs text-slate-600">{b.deskripsi}</p>
+                              ) : (
+                                <span className="inline-flex rounded-full bg-slate-100 px-2.5 py-1 text-xs font-medium text-slate-400">Belum ada</span>
+                              )}
+                            </td>
                             <td className="px-3 py-3.5">
                               <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${p.badge}`}>{p.label}</span>
                             </td>
                             <td className="px-3 py-3.5 text-center">
-                              {sedangUbah ? (
-                                <div>
-                                  <input
-                                    type="text" inputMode="numeric" autoFocus
-                                    value={edit.nilai}
-                                    onChange={(e) => { setEdit({ id: b.id, nilai: e.target.value }); setGalat('') }}
-                                    onKeyDown={(e) => {
-                                      if (e.key === 'Enter') simpan(b)
-                                      if (e.key === 'Escape') batal()
-                                    }}
-                                    aria-label={`Kuota bidang ${b.nama_bidang}`}
-                                    placeholder="Tanpa batas"
-                                    className="w-28 rounded-lg border border-slate-300 px-3 py-2 text-center text-sm tabular-nums focus:border-brand-500 focus:ring-2 focus:ring-brand-500/20 focus:outline-none"
-                                  />
-                                  {galat && <p role="alert" className="mt-1.5 max-w-[14rem] text-left text-xs text-red-600">{galat}</p>}
-                                </div>
-                              ) : (
-                                <span className="font-bold tabular-nums text-brand-900">{b.kuota ?? '-'}</span>
-                              )}
+                              <span className="font-semibold tabular-nums text-brand-900">{b.kuota ?? '-'}</span>
                             </td>
                             <td className="px-3 py-3.5 text-center tabular-nums text-slate-600">{b.terisi}</td>
-                            <td className="px-3 py-3.5 text-center font-bold tabular-nums text-brand-900">{b.sisa ?? '-'}</td>
+                            <td className="px-3 py-3.5 text-center font-semibold tabular-nums text-brand-900">{b.sisa ?? '-'}</td>
                             <td className="px-3 py-3.5">
                               {b.kuota > 0 ? (
                                 <div className="flex items-center gap-2">
@@ -403,32 +376,20 @@ export default function Kuota() {
                               )}
                             </td>
                             <td className="px-5 py-3.5 text-right whitespace-nowrap">
-                              {sedangUbah ? (
-                                <div className="inline-flex gap-2">
-                                  <button type="button" onClick={() => simpan(b)} disabled={menyimpan}
-                                    className="rounded-lg bg-brand-500 px-3.5 py-2 text-sm font-semibold text-white transition hover:bg-brand-600 disabled:opacity-60">
-                                    {menyimpan ? 'Menyimpan...' : 'Simpan'}
-                                  </button>
-                                  <button type="button" onClick={batal} disabled={menyimpan}
-                                    className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 disabled:opacity-60">
-                                    Batal
-                                  </button>
-                                </div>
-                              ) : (
-                                <div className="inline-flex gap-2">
-                                  <button type="button" onClick={() => mulaiUbah(b)} disabled={menyimpan}
-                                    className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500">
-                                    Ubah Kuota
-                                  </button>
-                                  <button type="button" onClick={() => { setBidangHapus(b); setInfo('') }}
-                                    disabled={menyimpan || b.total_pendaftar > 0}
-                                    title={b.total_pendaftar > 0 ? 'Tidak dapat dihapus karena sudah memiliki pendaftar' : undefined}
-                                    aria-label={`Hapus bidang ${b.nama_bidang}`}
-                                    className="rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:hover:bg-white">
-                                    Hapus
-                                  </button>
-                                </div>
-                              )}
+                              <div className="inline-flex gap-2">
+                                <button type="button" onClick={() => { setBidangEdit(b); setInfo('') }}
+                                  aria-label={`Edit bidang ${b.nama_bidang}`}
+                                  className="rounded-lg border border-slate-300 bg-white px-3.5 py-2 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500">
+                                  Edit
+                                </button>
+                                <button type="button" onClick={() => { setBidangHapus(b); setInfo('') }}
+                                  disabled={b.total_pendaftar > 0}
+                                  title={b.total_pendaftar > 0 ? 'Tidak dapat dihapus karena sudah memiliki pendaftar' : undefined}
+                                  aria-label={`Hapus bidang ${b.nama_bidang}`}
+                                  className="rounded-lg border border-red-200 bg-white px-3.5 py-2 text-sm font-semibold text-red-700 transition hover:bg-red-50 disabled:cursor-not-allowed disabled:border-slate-200 disabled:text-slate-300 disabled:hover:bg-white">
+                                  Hapus
+                                </button>
+                              </div>
                             </td>
                           </tr>
                         )
@@ -442,7 +403,8 @@ export default function Kuota() {
         )}
       </div>
 
-      {dialogTambah && <DialogTambah onTutup={() => setDialogTambah(false)} onTersimpan={bidangBaru} />}
+      {dialogTambah && <DialogBidang onTutup={() => setDialogTambah(false)} onTersimpan={bidangBaru} />}
+      {bidangEdit && <DialogBidang bidang={bidangEdit} onTutup={() => setBidangEdit(null)} onTersimpan={bidangDiedit} />}
       {bidangHapus && <DialogHapus bidang={bidangHapus} onTutup={() => setBidangHapus(null)} onTerhapus={bidangTerhapus} />}
     </div>
   )
