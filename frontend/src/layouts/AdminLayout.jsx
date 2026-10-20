@@ -13,10 +13,10 @@ function Sidebar({ admin, onNavigate, onLogout }) {
     <div className="flex h-full flex-col bg-brand-900 text-slate-300">
       <div className="px-5 py-6">
         <Logo light />
-        <p className="mt-3 text-[11px] font-semibold tracking-widest text-brand-200/70 uppercase">Panel Admin Magang</p>
+        <p className="mt-3 text-[0.6875rem] font-semibold tracking-widest text-brand-200/70 uppercase">Panel Admin Magang</p>
       </div>
 
-      <nav className="flex-1 space-y-1 px-3" aria-label="Menu admin">
+      <nav className="flex-1 space-y-1 overflow-y-auto px-3" aria-label="Menu admin">
         <NavLink
           to="/admin" end onClick={onNavigate}
           className={({ isActive }) =>
@@ -42,7 +42,7 @@ function Sidebar({ admin, onNavigate, onLogout }) {
         </NavLink>
       </nav>
 
-      <div className="m-3 rounded-xl bg-white/5 p-3.5">
+      <div className="m-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] rounded-xl bg-white/5 p-3.5">
         <div className="flex items-center gap-3">
           <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-brand-500 text-sm font-bold text-white">
             {(admin?.name ?? 'A').charAt(0).toUpperCase()}
@@ -74,7 +74,7 @@ function KonfirmasiKeluar({ memproses, onBatal, onYakin }) {
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
       onMouseDown={(e) => { if (e.target === e.currentTarget && !memproses) onBatal() }}>
       <div role="alertdialog" aria-modal="true" aria-labelledby="judul-keluar" aria-describedby="isi-keluar"
-        className="w-full max-w-sm rounded-2xl bg-white shadow-xl">
+        className="max-h-[calc(100dvh-2rem)] w-full max-w-sm overflow-y-auto rounded-2xl bg-white shadow-xl">
         <div className="px-6 pt-6 pb-5 text-center">
           <span className="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-red-50 text-red-600">
             <Icon name="logout" className="h-6 w-6" />
@@ -110,7 +110,8 @@ export default function AdminLayout() {
     async (pesan) => {
       if (pesan) setNotice(pesan)
       await logout()
-      navigate('/admin/login', { replace: true })
+      // Logout manual -> beranda publik; keluar otomatis (idle) -> login agar pesannya terbaca.
+      navigate(pesan ? '/admin/login' : '/', { replace: true })
     },
     [navigate],
   )
@@ -131,9 +132,9 @@ export default function AdminLayout() {
       </aside>
 
       {/* Topbar mobile */}
-      <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-slate-200 bg-white px-4 lg:hidden">
+      <header className="sticky top-0 z-30 flex min-h-16 items-center justify-between border-b border-slate-200 bg-white px-4 pt-[env(safe-area-inset-top)] lg:hidden">
         <Link to="/admin" aria-label="Dashboard admin"><Logo /></Link>
-        <button type="button" onClick={() => setOpen(true)} aria-label="Buka menu" className="rounded-lg p-2 text-brand-900">
+        <button type="button" onClick={() => setOpen(true)} aria-label="Buka menu" className="tap-44 flex items-center justify-center rounded-lg p-2 text-brand-900">
           <Icon name="menu" className="h-6 w-6" />
         </button>
       </header>
@@ -153,7 +154,7 @@ export default function AdminLayout() {
       )}
 
       <main className="lg:pl-64">
-        <div className="mx-auto max-w-6xl px-4 py-6 sm:px-6 lg:py-8">
+        <div className="mx-auto max-w-6xl py-6 pr-[max(1rem,env(safe-area-inset-right))] pl-[max(1rem,env(safe-area-inset-left))] sm:pr-[max(1.5rem,env(safe-area-inset-right))] sm:pl-[max(1.5rem,env(safe-area-inset-left))] lg:py-8">
           <Outlet />
         </div>
       </main>

@@ -1,20 +1,121 @@
 @import "tailwindcss";
 
 @theme {
+  /* Palet biru awal situs */
   --color-brand-50: #f0f7ff;
   --color-brand-100: #dcecfd;
   --color-brand-200: #bcdcfa;
   --color-brand-500: #0a84e8;
   --color-brand-600: #0872cc;
   --color-brand-900: #0b2a4a;
-  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+
+  /* gelica tidak tersedia -> Fraunces (substitusi yang disarankan DESIGN.md) */
+  --font-gelica: "gelica", "Fraunces", ui-serif, Georgia, serif;
+  --font-sans: "gelica", "Fraunces", ui-serif, Georgia, serif;
+  --font-geist: "Geist", ui-sans-serif, system-ui, sans-serif;
   --font-script: "Caveat", cursive;
 }
 
-html { scroll-behavior: smooth; }
+/* Skala dasar mengikuti perangkat (breakpoint Tailwind memakai rem pada media query, jadi tidak terpengaruh skala ini):
+   - HP & tablet (< 1024px): 100% (1rem = 16px) supaya teks terbaca dan input tidak memicu zoom otomatis iOS.
+   - Laptop & PC (1024px+): 80% (1rem = 12.8px), sehingga zoom browser 100% tampil seperti 80% (tampilan asli situs).
+   - Layar besar & TV: skala naik bertahap supaya teks tetap terbaca dari jarak jauh. */
+:root { color-scheme: light; }
+html { font-size: 100%; scroll-behavior: smooth; }
+@media (max-width: 767px) { html { font-size: 87.5%; } } /* HP: sedikit lebih kecil dari 100% supaya proporsinya mendekati desain (isian form tetap 16px, lihat bawah) */
+@media (min-width: 1024px) { html { font-size: 80%; } }
+@media (min-width: 1920px) { html { font-size: 90%; } }
+@media (min-width: 2560px) { html { font-size: 112.5%; } }
+@media (min-width: 3200px) { html { font-size: 150%; } }
+@media (min-width: 3840px) { html { font-size: 175%; } }
+html, body { overflow-x: clip; }
 body { color: #334155; -webkit-font-smoothing: antialiased; }
-section[id] { scroll-margin-top: 4.5rem; }
+h1, h2 { letter-spacing: 0; }
+section[id] { scroll-margin-top: 6rem; }
+
+/* Tinggi layar penuh yang benar di browser seluler (bilah alamat iOS/Android naik-turun): dvh bila didukung, vh sebagai cadangan. */
+@supports (min-height: 100dvh) { .min-h-screen { min-height: 100dvh; } }
+
+/* Area aman (notch iPhone, status bar, home indicator, sudut layar) -- aktif karena viewport-fit=cover. Di perangkat tanpa notch nilainya 0. */
+.pad-x { padding-left: max(1.5rem, env(safe-area-inset-left)); padding-right: max(1.5rem, env(safe-area-inset-right)); }
+.pad-b-safe { padding-bottom: max(2rem, calc(env(safe-area-inset-bottom) + 1rem)); }
+.nav-safe {
+  top: max(0.75rem, env(safe-area-inset-top));
+  padding-left: max(1rem, env(safe-area-inset-left));
+  padding-right: max(1rem, env(safe-area-inset-right));
+}
+@media (min-width: 768px) { .nav-safe { top: max(1rem, env(safe-area-inset-top)); } }
+.tap-44 { min-width: 44px; min-height: 44px; }
+
+/* Perangkat sentuh (iPhone, iPad, tablet & HP Android): isian minimal 16px agar Safari iOS tidak memperbesar halaman saat mengetik,
+   dan tidak ada jeda 300 ms / zoom ketuk ganda pada elemen interaktif. */
+@media (pointer: coarse) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select,
+  textarea { font-size: 16px; }
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]):not([type="file"]),
+  select { min-height: 44px; }
+}
+a, button, input, select, textarea, label, summary { touch-action: manipulation; }
+
+/* Fokus keyboard / remote TV (tombol panah + OK) harus terlihat jelas. */
+a:focus-visible, button:focus-visible, summary:focus-visible, [role="tab"]:focus-visible {
+  outline: 3px solid var(--color-brand-500);
+  outline-offset: 2px;
+}
+
+/* Stiker: muncul pelan (membesar + berputar sedikit, jeda 0,5 dtk, durasi 1,1 dtk) saat masuk layar, lalu bergoyang pelan di sekitar sudut miringnya (--r) */
+.sticker { opacity: 0; }
+.sticker[data-show="true"] {
+  animation:
+    sticker-in 1100ms cubic-bezier(0.34, 1.4, 0.64, 1) 500ms both,
+    sticker-wobble 4s ease-in-out 1600ms infinite;
+}
+@keyframes sticker-in {
+  from { opacity: 0; transform: rotate(calc(var(--r) - 25deg)) scale(0.3); }
+  to { opacity: 1; transform: rotate(var(--r)) scale(1); }
+}
+@keyframes sticker-wobble {
+  0%, 100% { transform: rotate(var(--r)); }
+  25% { transform: rotate(calc(var(--r) - 3deg)); }
+  75% { transform: rotate(calc(var(--r) + 3deg)); }
+}
+
+/* Navbar kapsul turun dari atas saat halaman dibuka */
+.nav-drop { animation: nav-drop 700ms cubic-bezier(0.2, 0.8, 0.2, 1) both; }
+@keyframes nav-drop {
+  from { opacity: 0; transform: translateY(-24px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Hero: isi muncul berurutan saat halaman dibuka (--d = jeda) */
+.rise-in { animation: rise-in 800ms cubic-bezier(0.2, 0.7, 0.2, 1) var(--d, 0ms) both; }
+@keyframes rise-in {
+  from { opacity: 0; transform: translateY(28px); }
+  to { opacity: 1; transform: none; }
+}
+
+/* Anak dari <Reveal> (data-show="true"): ikon/badge membal masuk, garis tergambar dari kiri */
+.pop-in { opacity: 0; transform: scale(0.4); }
+[data-show="true"] .pop-in { animation: pop-in 650ms cubic-bezier(0.34, 1.56, 0.64, 1) var(--d, 0ms) forwards; }
+@keyframes pop-in {
+  from { opacity: 0; transform: scale(0.4) rotate(-12deg); }
+  to { opacity: 1; transform: none; }
+}
+.line-draw { transform: scaleX(0); transform-origin: left center; }
+[data-show="true"] .line-draw { animation: line-draw 700ms ease-out var(--d, 0ms) forwards; }
+@keyframes line-draw { to { transform: scaleX(1); } }
+
+/* Ikon CTA mengambang pelan */
+.float-y { animation: float-y 3.5s ease-in-out infinite; }
+@keyframes float-y {
+  0%, 100% { transform: translateY(0); }
+  50% { transform: translateY(-6px); }
+}
 
 @media (prefers-reduced-motion: reduce) {
   html { scroll-behavior: auto; }
+  .sticker, .rise-in, .float-y, .nav-drop { animation: none !important; }
+  .sticker { opacity: 1; }
+  .pop-in, .line-draw { opacity: 1; transform: none; animation: none !important; }
 }

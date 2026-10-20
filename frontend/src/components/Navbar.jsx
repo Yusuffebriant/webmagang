@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { Link, NavLink } from 'react-router-dom'
+import { useEffect, useRef, useState } from 'react'
+import { Link, NavLink, useLocation } from 'react-router-dom'
 import Logo from './Logo'
 import Icon from './Icon'
 import { sesiMasihValid } from '../api/session'
@@ -8,60 +8,155 @@ export const navLinks = [
   { label: 'Beranda', to: '/', end: true },
   { label: 'Tentang Instansi', href: '/#tentang' },
   { label: 'Program Magang', href: '/#program' },
+  { label: 'Info Kuota Formasi', to: '/info-kuota' },
   { label: 'Pendaftaran', to: '/pendaftaran' },
   { label: 'Cek Status', to: '/cek-status' },
 ]
 
-const base = 'flex h-full items-center border-b-2 px-0.5 text-[15px] font-medium transition-colors'
-const idle = 'border-transparent text-slate-600 hover:text-brand-500'
-const active = 'border-brand-500 text-brand-500'
+// Menu navbar: tanpa 'Tentang Instansi' dan 'Program Magang'. Footer memakai daftar yang sama.
+export const navbarLinks = navLinks.filter((l) => l.href !== '/#tentang' && l.href !== '/#program')
 
+// Posisi (dari atas dokumen) tempat section berada saat tidak menempel.
+// Section di Beranda bersifat `position: sticky`, jadi getBoundingClientRect/scrollIntoView memberi posisi saat
+// menempel (sudah di layar) dan klik menu terasa "tidak bergerak". Posisi aslinya dihitung dari urutan section di dalam tumpukan.
+// Section dihentikan 96px (6rem) di bawah tepi atas layar: di bawah navbar, dengan tepi map sebelumnya masih mengintip di atasnya.
+const SECTION_OFFSET = 96
+function sectionTop(el) {
+  if (getComputedStyle(el).position !== 'sticky') {
+    return el.getBoundingClientRect().top + window.scrollY - SECTION_OFFSET
+  }
+  const root = el.parentElement
+  let top = root.getBoundingClientRect().top + window.scrollY + parseFloat(getComputedStyle(root).paddingTop)
+  for (const slide of Array.from(root.children).filter((c) => c.tagName === 'SECTION')) {
+    top += parseFloat(getComputedStyle(slide).marginTop) || 0
+    if (slide === el) break
+    top += slide.offsetHeight
+  }
+  return top - SECTION_OFFSET
+}
+
+const base = 'rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors'
+const idle = 'text-slate-300 hover:text-white'
+const active = 'bg-white/10 text-white'
+
+// Navbar kapsul melayang: menempel di atas layar, kaca gelap transparan.
+// Saat halaman sedang di-scroll (naik/turun) navbar bergeser keluar ke atas layar;
+// berhenti scroll -> turun kembali ke posisi normal.
+// Empat menu cukup panjang, jadi menu lengkap baru tampil mulai layar xl; di bawahnya memakai tombol menu.
 export default function Navbar() {
   const [open, setOpen] = useState(false)
+  // Status scroll sengaja TIDAK disimpan di state React: setiap event scroll akan me-render ulang seluruh Navbar.
+  // Cukup ubah atribut/style elemen langsung lewat ref.
+  const barRef = useRef(null)
+  const sembunyi = useRef(false)
+  const bukaRef = useRef(false)
+  const timer = useRef(null)
+  const { pathname, hash, key } = useLocation()
+  const prevPath = useRef(null)
+
+  const atur = (h) => {
+    const bar = barRef.current
+    if (!bar || sembunyi.current === h) return
+    sembunyi.current = h
+    bar.style.transform = h ? 'translateY(-170%)' : 'translateY(0)'
+    bar.setAttribute('aria-hidden', String(h))
+  }
+
+  // Menu seluler terbuka -> navbar tidak boleh bersembunyi.
+  useEffect(() => {
+    bukaRef.current = open
+    if (open) atur(false)
+  }, [open])
+
+  // Sembunyi hanya saat scroll berlangsung, dan tidak saat menu seluler sedang dibuka.
+  useEffect(() => {
+    const bar = barRef.current
+    const tandai = () => {
+      const v = String(window.scrollY > 24)
+      if (bar && bar.dataset.scrolled !== v) bar.dataset.scrolled = v
+    }
+    const onScroll = () => {
+      tandai()
+      if (!bukaRef.current && window.innerWidth >= 768) atur(true) // di HP navbar tetap tampil: bersembunyi tiap scroll terasa berkedip
+      clearTimeout(timer.current)
+      timer.current = setTimeout(() => atur(false), 200)
+    }
+    tandai()
+    window.addEventListener('scroll', onScroll, { passive: true })
+    return () => {
+      window.removeEventListener('scroll', onScroll)
+      clearTimeout(timer.current)
+    }
+  }, [])
+
+  // Setiap kali menu ditekan (termasuk menu yang sama berulang kali): gulir ke section tujuan,
+  // atau ke paling atas bila tujuannya halaman/Beranda tanpa #section.
+  useEffect(() => {
+    const first = prevPath.current === null
+    const samePage = prevPath.current === pathname
+    prevPath.current = pathname
+    const id = decodeURIComponent(hash.slice(1))
+    if (!id && first) return // buka halaman biasa: biarkan browser memulihkan posisi scroll
+    let r2
+    const r1 = requestAnimationFrame(() => {
+      r2 = requestAnimationFrame(() => {
+        const el = id ? document.getElementById(id) : null
+        if (id && !el) return
+        window.scrollTo({ top: el ? Math.max(0, sectionTop(el)) : 0, behavior: first || !samePage ? 'auto' : 'smooth' })
+      })
+    })
+    return () => { cancelAnimationFrame(r1); cancelAnimationFrame(r2) }
+  }, [key, pathname, hash])
+
   const adaSesi = sesiMasihValid()
   const labelAdmin = adaSesi ? 'Dashboard Admin' : 'Login Admin'
   const tujuanAdmin = adaSesi ? '/admin' : '/admin/login'
 
   return (
-    <header className="sticky top-0 z-50 border-b border-slate-100 bg-white/95 backdrop-blur">
-      <div className="mx-auto flex h-[76px] max-w-7xl items-center justify-between gap-6 px-6">
-        <Link to="/" aria-label="Beranda BKPSDM"><Logo /></Link>
+    <header className="nav-drop nav-safe fixed inset-x-0 top-3 z-50 px-4 font-geist md:top-4">
+      <div
+        ref={barRef}
+        data-open={open}
+        className={`mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2 pl-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-[transform,background-color] duration-300 ease-out bg-brand-900/60 data-[open=true]:bg-brand-900/90 data-[scrolled=true]:bg-brand-900/90`}
+      >
+        <Link to="/" aria-label="Beranda BKPSDM" className="shrink-0"><Logo light compact /></Link>
 
-        <nav className="hidden h-full items-center gap-8 md:flex" aria-label="Menu utama">
-          {navLinks.map((l) =>
+        <nav className="hidden items-center gap-1 xl:flex" aria-label="Menu utama">
+          {navbarLinks.map((l) =>
             l.to ? (
               <NavLink key={l.label} to={l.to} end={l.end}
                 className={({ isActive }) => `${base} ${isActive ? active : idle}`}>
                 {l.label}
               </NavLink>
             ) : (
-              <a key={l.label} href={l.href} className={`${base} ${idle}`}>{l.label}</a>
+              <Link key={l.label} to={l.href} className={`${base} ${idle}`}>{l.label}</Link>
             )
           )}
         </nav>
 
         <Link to={tujuanAdmin}
-          className="hidden items-center gap-2 rounded-lg border border-slate-300 px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 md:inline-flex">
+          className="hidden shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 xl:inline-flex">
           <Icon name="user" className="h-4 w-4" /> {labelAdmin}
         </Link>
 
         <button type="button" onClick={() => setOpen((v) => !v)}
-          className="rounded-lg p-2 text-brand-900 md:hidden" aria-label="Buka menu" aria-expanded={open}>
-          <Icon name={open ? 'close' : 'menu'} className="h-6 w-6" />
+          className="tap-44 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 xl:hidden"
+          aria-label="Buka menu" aria-expanded={open}>
+          <Icon name={open ? 'close' : 'menu'} className="h-5 w-5" />
         </button>
       </div>
 
       {open && (
-        <nav className="border-t border-slate-100 bg-white px-6 py-3 md:hidden" aria-label="Menu seluler">
-          {navLinks.map((l) => (
-            <a key={l.label} href={l.href ?? l.to} onClick={() => setOpen(false)}
-              className="block rounded-lg px-3 py-2.5 text-sm font-medium text-slate-700 hover:bg-brand-50">
+        <nav className="mx-auto mt-2 max-h-[calc(100dvh-6rem)] max-w-6xl overflow-y-auto rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
+          {navbarLinks.map((l) => (
+            <Link key={l.label} to={l.href ?? l.to} onClick={() => setOpen(false)}
+              className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white">
               {l.label}
-            </a>
+            </Link>
           ))}
           <Link to={tujuanAdmin} onClick={() => setOpen(false)}
-            className="mt-1 block rounded-lg px-3 py-2.5 text-sm font-semibold text-brand-500 hover:bg-brand-50">
-            {labelAdmin}
+            className="mt-1 flex items-center justify-center gap-2 rounded-full bg-white px-4 py-3 text-sm font-semibold text-brand-900">
+            <Icon name="user" className="h-4 w-4" /> {labelAdmin}
           </Link>
         </nav>
       )}

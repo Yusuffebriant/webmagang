@@ -205,7 +205,7 @@ export default function Dashboard() {
                 </div>
               ) : (
                 <div className="overflow-x-auto">
-                  <table className="w-full min-w-[560px] text-left text-sm">
+                  <table className="w-full min-w-[35rem] text-left text-sm">
                     <thead className="text-xs tracking-wide text-slate-500 uppercase">
                       <tr>
                         <th className="px-5 py-3 font-semibold sm:px-6">No. Pendaftaran</th>
