@@ -2,52 +2,44 @@
 
 namespace App\Exports;
 
+use App\Enums\StatusPendaftar;
 use App\Models\Pendaftar;
 use Illuminate\Support\Collection;
-use Maatwebsite\Excel\Concerns\FromCollection;
-use Maatwebsite\Excel\Concerns\WithCustomStartCell;
-use Maatwebsite\Excel\Concerns\WithCustomValueBinder;
+use Illuminate\Support\Facades\Storage;
+use Maatwebsite\Excel\Concerns\FromArray;
 use Maatwebsite\Excel\Concerns\WithEvents;
-use Maatwebsite\Excel\Concerns\WithHeadings;
-use Maatwebsite\Excel\Concerns\WithMapping;
 use Maatwebsite\Excel\Concerns\WithTitle;
 use Maatwebsite\Excel\Events\AfterSheet;
-use PhpOffice\PhpSpreadsheet\Cell\Cell;
-use PhpOffice\PhpSpreadsheet\Cell\DataType;
-use PhpOffice\PhpSpreadsheet\Cell\DefaultValueBinder;
+use PhpOffice\PhpSpreadsheet\RichText\RichText;
 use PhpOffice\PhpSpreadsheet\Style\Alignment;
 use PhpOffice\PhpSpreadsheet\Style\Border;
+use PhpOffice\PhpSpreadsheet\Style\Color;
 use PhpOffice\PhpSpreadsheet\Style\Fill;
+use PhpOffice\PhpSpreadsheet\Worksheet\Drawing;
+use PhpOffice\PhpSpreadsheet\Worksheet\MemoryDrawing;
 use PhpOffice\PhpSpreadsheet\Worksheet\PageSetup;
 
 /**
- * Unduhan dari halaman admin "Data Pendaftar": data diri lengkap per orang.
- * Satu baris = satu orang (ketua, lalu anggota kelompoknya tepat di bawahnya).
+ * Unduhan dari halaman admin "Data Pendaftar".
+ *
+ * Kolom : No | Nomor Pendaftaran | Peran (+ foto) | Biodata | Hasil Magang
+ * Baris : satu baris = satu orang. Ketua lalu anggotanya tepat di bawahnya;
+ *         kolom No & Nomor Pendaftaran digabung (merge) sepanjang satu kelompok.
+ * Jumlah pendaftar / orang dihitung otomatis oleh rumus Excel (bukan angka mati).
  * Mengikuti filter status & pencarian yang sedang aktif di halaman.
  */
-class DataDiriPendaftarExport extends DefaultValueBinder implements
-    FromCollection,
-    WithHeadings,
-    WithMapping,
-    WithCustomStartCell,
-    WithCustomValueBinder,
-    WithEvents,
-    WithTitle
+class DataDiriPendaftarExport implements FromArray, WithTitle, WithEvents
 {
     private const BARIS_HEADER = 5;
-    private const KOLOM_AKHIR  = 'W';
+    private const KOLOM_AKHIR  = 'E';
 
-    // NIM (E), NIK (F), No. WhatsApp (L): simpan sebagai teks supaya angka nol depan tidak hilang.
-    private const KOLOM_TEKS = ['E', 'F', 'L'];
+    private const LEBAR_KOLOM = ['A' => 7, 'B' => 22, 'C' => 24, 'D' => 62, 'E' => 54];
 
-    private const LEBAR_KOLOM = [
-        'A' => 8,  'B' => 26, 'C' => 14, 'D' => 32, 'E' => 20, 'F' => 24, 'G' => 20, 'H' => 17,
-        'I' => 17, 'J' => 46, 'K' => 32, 'L' => 20, 'M' => 34, 'N' => 32, 'O' => 32, 'P' => 12,
-        'Q' => 12, 'R' => 28, 'S' => 32, 'T' => 17, 'U' => 17, 'V' => 22, 'W' => 20,
-    ];
-
-    private ?Collection $baris = null;
-    private int $no = 0;
+    private const BIRU_TUA   = '0B2A4A';
+    private const ABU        = '000000'; // semua teks hitam
+    private const TINGGI_FOTO = 120;   // px
+    private const LEBAR_MAKS_FOTO = 150; // px
+    private const LEBAR_PX_KOLOM_C = 173; // kira-kira lebar kolom C (24 karakter) dalam px
 
     /**
      * @param  string|null  $status  nilai enum StatusPendaftar, null = semua
@@ -57,7 +49,26 @@ class DataDiriPendaftarExport extends DefaultValueBinder implements
     {
     }
 
-    public function collection(): Collection
+    public function array(): array
+    {
+        return [];
+    }
+
+    public function title(): string
+    {
+        return 'Data Diri Pendaftar';
+    }
+
+    public function registerEvents(): array
+    {
+        return [
+            AfterSheet::class => fn (AfterSheet $event) => $this->tulis($event->sheet->getDelegate()),
+        ];
+    }
+
+    // ------------------------------------------------------------------ data
+
+    private function ambilPendaftar(): Collection
     {
         $query = Pendaftar::with('program', 'bidang', 'anggota.bidang')->latest();
 
@@ -75,211 +86,343 @@ class DataDiriPendaftarExport extends DefaultValueBinder implements
             });
         }
 
-        // Ratakan: ketua lalu anggotanya, masing-masing satu baris.
-        return $this->baris = $query->get()->flatMap(function (Pendaftar $p) {
-            $baris = collect([['orang' => $p, 'ketua' => $p, 'peran' => 'Ketua']]);
-
-            foreach ($p->anggota as $i => $a) {
-                $baris->push(['orang' => $a, 'ketua' => $p, 'peran' => 'Anggota ' . ($i + 1)]);
-            }
-
-            return $baris;
-        })->values();
+        return $query->get();
     }
 
-    public function startCell(): string
+    /** Isi kolom Biodata: [label => nilai], urut dari NIM sampai Tanggal Daftar. */
+    private function daftarBiodata($o, Pendaftar $k): array
     {
-        return 'A' . self::BARIS_HEADER;
-    }
-
-    public function title(): string
-    {
-        return 'Data Diri Pendaftar';
-    }
-
-    public function headings(): array
-    {
-        return [
-            'No', 'Nomor Pendaftaran', 'Peran', 'Nama Lengkap', 'NIM', 'NIK',
-            'Tempat Lahir', 'Tanggal Lahir', 'Jenis Kelamin', 'Alamat', 'Email', 'No. HP / WhatsApp',
-            'Universitas / Kampus', 'Fakultas', 'Program Studi / Jurusan', 'Jenjang', 'Semester',
-            'Program Magang', 'Bidang', 'Periode Mulai', 'Periode Selesai', 'Status', 'Tanggal Daftar',
-        ];
-    }
-
-    public function map($row): array
-    {
-        $o = $row['orang'];
-        $k = $row['ketua'];
+        $periode = ($k->periode_mulai && $k->periode_selesai)
+            ? $k->periode_mulai->format('d-m-Y') . ' s.d. ' . $k->periode_selesai->format('d-m-Y')
+            : null;
 
         return [
-            ++$this->no,
-            $k->nomor_pendaftaran,
-            $row['peran'],
-            $o->nama_lengkap,
-            $o->nim,
-            $o->nik,
-            $o->tempat_lahir,
-            $o->tanggal_lahir?->format('d-m-Y'),
-            match ($o->jenis_kelamin) {
+            'NIM'                     => $o->nim,
+            'NIK'                     => $o->nik,
+            'Tempat Lahir'            => $o->tempat_lahir,
+            'Tanggal Lahir'           => $o->tanggal_lahir?->format('d-m-Y'),
+            'Jenis Kelamin'           => match ($o->jenis_kelamin) {
                 'L'     => 'Laki-laki',
                 'P'     => 'Perempuan',
                 default => $o->jenis_kelamin,
             },
-            $o->alamat,
-            $o->email,
-            $o->no_whatsapp,
-            $o->universitas,
-            $o->fakultas,
-            $o->program_studi,
-            $o->jenjang ?? null,
-            $o->semester,
-            $k->program?->nama_program,
-            ($o->bidang ?? $k->bidang)?->nama_bidang,
-            $k->periode_mulai?->format('d-m-Y'),
-            $k->periode_selesai?->format('d-m-Y'),
-            $k->status->label(),
-            $k->created_at->format('d-m-Y H:i'),
+            'Alamat'                  => $o->alamat,
+            'Email'                   => $o->email,
+            'No. HP / WhatsApp'       => $o->no_whatsapp,
+            'Universitas / Kampus'    => $o->universitas,
+            'Fakultas'                => $o->fakultas,
+            'Program Studi / Jurusan' => $o->program_studi,
+            'Jenjang'                 => $o->jenjang ?? null,
+            'Semester'                => $o->semester,
+            'Program Magang'          => $k->program?->nama_program,
+            'Bidang'                  => ($o->bidang ?? $k->bidang)?->nama_bidang,
+            'Periode Magang'          => $periode,
+            'Status'                  => $k->status->label(),
+            'Tanggal Daftar'          => $k->created_at?->format('d-m-Y H:i'),
         ];
     }
 
-    public function bindValue(Cell $cell, $value): bool
-    {
-        if (
-            is_string($value)
-            && $cell->getRow() > self::BARIS_HEADER
-            && in_array($cell->getColumn(), self::KOLOM_TEKS, true)
-        ) {
-            $cell->setValueExplicit($value, DataType::TYPE_STRING);
+    // ----------------------------------------------------------- rich text
 
-            return true;
+    private function tambah(RichText $rt, string $teks, bool $tebal = false, int $ukuran = 10, string $warna = '000000', bool $miring = false): void
+    {
+        $run = $rt->createTextRun($teks);
+        $run->getFont()
+            ->setName('Times New Roman')
+            ->setSize($ukuran)
+            ->setBold($tebal)
+            ->setItalic($miring)
+            ->setColor(new Color('FF' . $warna));
+    }
+
+    private function kosong($nilai): string
+    {
+        $nilai = trim((string) $nilai);
+
+        return $nilai === '' ? '-' : $nilai;
+    }
+
+    private function sel_biodata($o, Pendaftar $k): array
+    {
+        $rt     = new RichText();
+        $baris  = 3.1; // jarak atas (kecil) + nama (besar) + satu baris kosong
+        $this->tambah($rt, " \n", false, 4);   // jarak tipis di atas nama supaya tidak menempel ke garis
+        $this->tambah($rt, mb_strtoupper($this->kosong($o->nama_lengkap)), true, 14, '000000');
+        $this->tambah($rt, "\n");               // satu enter (baris kosong) setelah nama
+
+        foreach ($this->daftarBiodata($o, $k) as $label => $nilai) {
+            $nilai = $this->kosong($nilai);
+            $this->tambah($rt, "\n" . $label, true);
+            $this->tambah($rt, ' : ' . $nilai);
+            $baris += $this->hitungBaris($label . ' : ' . $nilai, 66);
         }
 
-        return parent::bindValue($cell, $value);
+        return [$rt, $baris];
     }
 
-    public function registerEvents(): array
+    private function sel_hasil($o): array
     {
-        return [
-            AfterSheet::class => function (AfterSheet $event) {
-                $s        = $event->sheet->getDelegate();
-                $akhir    = self::KOLOM_AKHIR;
-                $header   = self::BARIS_HEADER;
-                $baris    = $this->baris ?? collect();
-                $jumlah   = $baris->count();
-                $terakhir = $header + max($jumlah, 1);
-                $hitam    = '000000';
-                $tengah   = [
-                    'horizontal' => Alignment::HORIZONTAL_CENTER,
-                    'vertical'   => Alignment::VERTICAL_CENTER,
-                ];
-                $garis = [
-                    'allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => $hitam]],
-                ];
+        $nilai    = $o->nilai_akhir;
+        $ringkas  = trim((string) $o->hasil_magang);
 
-                // Semua polos putih, garis tabel hitam tipis yang jelas terlihat.
-                $s->setShowGridlines(false);
-                $s->getStyle("A1:{$akhir}" . ($terakhir + 1))->getFont()->setSize(10)->getColor()->setRGB($hitam);
+        if ($nilai === null && $ringkas === '') {
+            $rt = new RichText();
+            $this->tambah($rt, 'Belum diisi', false, 10, self::ABU, true);
 
-                // ---------- Judul ----------
-                foreach ([1, 2, 3] as $r) {
-                    $s->mergeCells("A{$r}:{$akhir}{$r}");
+            return [$rt, 1];
+        }
+
+        $rt    = new RichText();
+        $baris = 1;
+        $this->tambah($rt, 'Nilai Akhir', true);
+        $this->tambah($rt, ' : ' . ($nilai ?? '-'));
+
+        if ($ringkas !== '') {
+            $this->tambah($rt, "\nRingkasan Kegiatan / Hasil Magang :", true);
+            $this->tambah($rt, "\n" . $ringkas);
+            $baris += 1 + $this->hitungBaris($ringkas, 58);
+        }
+
+        return [$rt, $baris];
+    }
+
+    // ----------------------------------------------------------------- foto
+
+    /** Pasang foto di bawah tulisan peran. Kembalikan false bila file tidak ada / tidak terbaca. */
+    private function pasangFoto($s, ?string $foto, int $baris): bool
+    {
+        if (! filled($foto) || ! Storage::disk('public')->exists($foto)) {
+            return false;
+        }
+
+        $path = Storage::disk('public')->path($foto);
+        $info = @getimagesize($path);
+
+        if (! $info || $info[0] < 1 || $info[1] < 1) {
+            return false;
+        }
+
+        [$w0, $h0] = $info;
+        $h = self::TINGGI_FOTO;
+        $w = (int) round($w0 * $h / $h0);
+
+        if ($w > self::LEBAR_MAKS_FOTO) {
+            $w = self::LEBAR_MAKS_FOTO;
+            $h = (int) round($h0 * $w / $w0);
+        }
+
+        $gambar = null;
+
+        // Perkecil dulu (2x ukuran tampil) supaya file Excel tidak membengkak oleh foto 2 MB.
+        if (function_exists('imagecreatefromstring') && function_exists('imagescale')) {
+            $isi = @file_get_contents($path);
+            $src = $isi ? @imagecreatefromstring($isi) : false;
+
+            if ($src) {
+                $kecil = @imagescale($src, $w * 2, $h * 2);
+                if ($kecil) {
+                    $png    = ($info[2] ?? null) === IMAGETYPE_PNG;
+                    $gambar = new MemoryDrawing();
+                    $gambar->setImageResource($kecil);
+                    $gambar->setRenderingFunction($png ? MemoryDrawing::RENDERING_PNG : MemoryDrawing::RENDERING_JPEG);
+                    $gambar->setMimeType(MemoryDrawing::MIMETYPE_DEFAULT);
                 }
+            }
+        }
 
-                $label = $this->status
-                    ? (\App\Enums\StatusPendaftar::tryFrom($this->status)?->label() ?? $this->status)
-                    : 'Semua status';
-                $orang = $baris->filter(fn ($b) => $b['peran'] === 'Ketua')->count();
+        if (! $gambar) {
+            $gambar = new Drawing();
+            $gambar->setPath($path);
+        }
 
-                $s->setCellValue('A1', 'DATA DIRI PENDAFTAR MAGANG');
-                $s->setCellValue('A2', 'BADAN KEPEGAWAIAN DAN PENGEMBANGAN SUMBER DAYA MANUSIA (BKPSDM) KOTA YOGYAKARTA');
-                // Jumlah dihitung otomatis oleh Excel dan ikut berubah saat tabel difilter.
-                $dAwal  = $header + 1;
-                $dAkhir = $terakhir;
-                $fPendaftar = "SUMPRODUCT(SUBTOTAL(103,OFFSET(C{$dAwal},ROW(C{$dAwal}:C{$dAkhir})-ROW(C{$dAwal}),0))*(C{$dAwal}:C{$dAkhir}=\"Ketua\"))";
-                $fOrang     = "SUBTOTAL(103,D{$dAwal}:D{$dAkhir})";
-                $teksCetak  = sprintf(
-                    'Dicetak: %s WIB   |   Filter: %s%s   |   ',
-                    now()->translatedFormat('d F Y, H:i'),
-                    $label,
-                    $this->cari ? ' · cari "' . $this->cari . '"' : '',
-                );
-                $s->setCellValue('A3', '="' . str_replace('"', '""', $teksCetak) . '"&' . $fPendaftar . '&" pendaftar, "&' . $fOrang . '&" orang"');
+        $gambar->setResizeProportional(false);
+        $gambar->setWidthAndHeight($w, $h);
+        $gambar->setCoordinates('C' . $baris);
+        $gambar->setOffsetX(max(0, (int) round((self::LEBAR_PX_KOLOM_C - $w) / 2)));
+        $gambar->setOffsetY(30);
+        $gambar->setWorksheet($s);
 
-                $s->getStyle("A1:{$akhir}3")->applyFromArray(['font' => ['bold' => true, 'size' => 11], 'alignment' => $tengah]);
-                $s->getStyle("A3:{$akhir}3")->applyFromArray(['font' => ['bold' => false, 'size' => 9]]);
+        return true;
+    }
 
-                // ---------- Header tabel ----------
-                $s->getStyle("A{$header}:{$akhir}{$header}")->applyFromArray([
-                    'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
-                    'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => '0B2A4A']],
-                    'alignment' => $tengah + ['wrapText' => true],
-                    'borders'   => $garis,
-                ]);
-                $s->getRowDimension($header)->setRowHeight(32);
+    // ----------------------------------------------------------------- tulis
 
-                // ---------- Isi tabel: semua sel bergaris hitam tipis ----------
-                $s->getStyle("A{$header}:{$akhir}{$terakhir}")->applyFromArray(['borders' => $garis]);
+    private function tulis($s): void
+    {
+        $akhir  = self::KOLOM_AKHIR;
+        $header = self::BARIS_HEADER;
+        $hitam  = '000000';
+        $tengah = ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER];
+        $garis  = ['allBorders' => ['borderStyle' => Border::BORDER_THIN, 'color' => ['rgb' => $hitam]]];
 
-                if ($jumlah > 0) {
-                    $awal = $header + 1;
+        $kelompok = $this->ambilPendaftar();
 
-                    $s->getStyle("A{$awal}:{$akhir}{$terakhir}")
-                        ->getAlignment()->setVertical(Alignment::VERTICAL_CENTER);
-                    $s->getStyle("J{$awal}:J{$terakhir}")->getAlignment()->setWrapText(true);
+        $s->setShowGridlines(true); // garis bantu abu-abu bawaan Excel tetap tampil di layar
+        $s->getParent()->getDefaultStyle()->getFont()->setName('Times New Roman')->setSize(10);
 
-                    foreach (['A', 'C', 'H', 'I', 'Q', 'T', 'U', 'V', 'W'] as $kol) {
-                        $s->getStyle("{$kol}{$awal}:{$kol}{$terakhir}")
-                            ->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
-                    }
+        // ---------- Header tabel (judul ditulis belakangan karena butuh alamat rentang data) ----------
+        foreach (['No', 'Nomor Pendaftaran', 'Peran', 'Biodata', 'Hasil Magang'] as $i => $teks) {
+            $s->setCellValue(chr(65 + $i) . $header, $teks);
+        }
+        $s->getStyle("A{$header}:{$akhir}{$header}")->applyFromArray([
+            'font'      => ['bold' => true, 'color' => ['rgb' => 'FFFFFF']],
+            'fill'      => ['fillType' => Fill::FILL_SOLID, 'startColor' => ['rgb' => self::BIRU_TUA]],
+            'alignment' => $tengah + ['wrapText' => true],
+            'borders'   => $garis,
+        ]);
+        $s->getRowDimension($header)->setRowHeight(30);
 
-                    // Per baris: ketua ditebalkan, anggota menjorok sedikit.
-                    foreach ($baris->values() as $i => $b) {
-                        $r     = $awal + $i;
-                        $ketua = $b['peran'] === 'Ketua';
+        // ---------- Isi: satu kelompok = satu blok baris ----------
+        $baris = $header + 1;
+        $awalData = $baris;
+        $no = 0;
 
-                        $baris_alamat = max(1, (int) ceil(mb_strlen((string) $b['orang']->alamat) / 44));
-                        $s->getRowDimension($r)->setRowHeight(max(20, 14 * $baris_alamat + 6));
+        foreach ($kelompok as $k) {
+            $no++;
+            $orang = collect([['o' => $k, 'peran' => 'Ketua']]);
+            foreach ($k->anggota as $i => $a) {
+                $orang->push(['o' => $a, 'peran' => 'Anggota ' . ($i + 1)]);
+            }
 
-                        if ($ketua) {
-                            $s->getStyle("C{$r}:D{$r}")->getFont()->setBold(true);
-                        }
+            $awalKelompok = $baris;
 
-                        foreach (['B', 'D', 'E', 'F', 'G', 'J', 'K', 'L', 'M', 'N', 'O', 'R', 'S'] as $kol) {
-                            $s->getStyle("{$kol}{$r}")->getAlignment()
-                                ->setHorizontal(Alignment::HORIZONTAL_LEFT)
-                                ->setIndent($kol === 'D' && ! $ketua ? 2 : 1);
-                        }
-                    }
+            foreach ($orang as $item) {
+                $o = $item['o'];
+
+                [$rtBio, $barisBio]     = $this->sel_biodata($o, $k);
+                [$rtHasil, $barisHasil] = $this->sel_hasil($o);
+
+                // Peran + foto
+                $adaFoto = $this->pasangFoto($s, $o->foto, $baris);
+                $rtPeran = new RichText();
+                $this->tambah($rtPeran, $item['peran'], $item['peran'] === 'Ketua');
+                if (! $adaFoto) {
+                    $this->tambah($rtPeran, "\n(tidak ada foto)", false, 10, self::ABU);
                 }
+                $s->setCellValue("C{$baris}", $rtPeran);
+                $s->setCellValue("D{$baris}", $rtBio);
+                $s->setCellValue("E{$baris}", $rtHasil);
 
-                // ---------- Baris total (putih, bergaris) ----------
-                $total = $terakhir + 1;
-                $s->mergeCells("A{$total}:D{$total}");
-                $s->setCellValue("A{$total}", '="TOTAL  "&' . $fPendaftar . '&" pendaftar, "&' . $fOrang . '&" orang"');
-                $s->getStyle("A{$total}:{$akhir}{$total}")->applyFromArray([
-                    'font'      => ['bold' => true],
-                    'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 1],
-                    'borders'   => $garis,
-                ]);
-                $s->getRowDimension($total)->setRowHeight(22);
+                // Tinggi baris: cukup untuk biodata / hasil magang / foto, mana yang paling tinggi.
+                $tinggiTeks = max($barisBio, $barisHasil) * 13.2 + 10;
+                $tinggiFoto = $adaFoto ? (30 + self::TINGGI_FOTO + 12) * 0.75 : 0;
+                $s->getRowDimension($baris)->setRowHeight(min(409, max(40, $tinggiTeks, $tinggiFoto)));
 
-                // ---------- Lebar kolom, filter, freeze, cetak ----------
-                foreach (self::LEBAR_KOLOM as $kol => $lebar) {
-                    $s->getColumnDimension($kol)->setWidth($lebar);
-                }
+                $baris++;
+            }
 
-                $s->setAutoFilter("A{$header}:{$akhir}{$terakhir}");
-                $s->freezePane('E' . ($header + 1));
+            $akhirKelompok = $baris - 1;
 
-                $s->getPageSetup()
-                    ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
-                    ->setPaperSize(PageSetup::PAPERSIZE_A3)
-                    ->setFitToPage(true)
-                    ->setFitToWidth(1)
-                    ->setFitToHeight(0)
-                    ->setRowsToRepeatAtTopByStartAndEnd($header, $header);
-            },
-        ];
+            // No & Nomor Pendaftaran: satu per kelompok, digabung sepanjang kelompok.
+            $s->setCellValue("A{$awalKelompok}", $no);
+            $s->setCellValueExplicit("B{$awalKelompok}", (string) $k->nomor_pendaftaran, \PhpOffice\PhpSpreadsheet\Cell\DataType::TYPE_STRING);
+            if ($akhirKelompok > $awalKelompok) {
+                $s->mergeCells("A{$awalKelompok}:A{$akhirKelompok}");
+                $s->mergeCells("B{$awalKelompok}:B{$akhirKelompok}");
+            }
+        }
+
+        // Tidak ada data -> satu baris keterangan agar tabel tidak kosong.
+        if ($kelompok->isEmpty()) {
+            $s->mergeCells("A{$baris}:{$akhir}{$baris}");
+            $s->setCellValue("A{$baris}", 'Tidak ada data pendaftar.');
+            $s->getStyle("A{$baris}")->applyFromArray(['alignment' => $tengah, 'font' => ['italic' => true]]);
+            $s->getRowDimension($baris)->setRowHeight(28);
+            $baris++;
+        }
+
+        $akhirData = $baris - 1;
+
+        // Garis tipis seluruh tabel (garis luar kelompok yang tebal ditimpa lagi di bawah).
+        $s->getStyle("A{$header}:{$akhir}{$akhirData}")->applyFromArray(['borders' => $garis]);
+
+        // Perataan isi
+        $awal = $header + 1;
+        $s->getStyle("A{$awal}:{$akhir}{$akhirData}")->getAlignment()
+            ->setVertical(Alignment::VERTICAL_TOP)->setWrapText(true);
+        $s->getStyle("A{$awal}:C{$akhirData}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_CENTER);
+        $s->getStyle("D{$awal}:E{$akhirData}")->getAlignment()->setHorizontal(Alignment::HORIZONTAL_LEFT)->setIndent(1);
+
+        // Garis luar tebal memisahkan antar kelompok (diterapkan setelah garis tipis agar tidak tertimpa).
+        $pos = $awal;
+        foreach ($kelompok as $k) {
+            $ujung = $pos + $k->anggota->count(); // ketua + anggota = 1 + n baris
+            $s->getStyle("A{$pos}:{$akhir}{$ujung}")->applyFromArray([
+                'borders' => ['outline' => ['borderStyle' => Border::BORDER_MEDIUM, 'color' => ['rgb' => $hitam]]],
+            ]);
+            $pos = $ujung + 1;
+        }
+
+        // ---------- Rumus jumlah otomatis ----------
+        // Pendaftar = banyak nomor di kolom A (satu angka per kelompok); orang = banyak sel terisi di kolom Peran.
+        $fPendaftar = "COUNT(A{$awal}:A{$akhirData})";
+        $fOrang     = "COUNTA(C{$awal}:C{$akhirData})";
+
+        // ---------- Judul ----------
+        foreach ([1, 2, 3] as $r) {
+            $s->mergeCells("A{$r}:{$akhir}{$r}");
+        }
+
+        $label = $this->status
+            ? (StatusPendaftar::tryFrom($this->status)?->label() ?? $this->status)
+            : 'Semua status';
+
+        $teksCetak = sprintf(
+            'Dicetak: %s WIB   |   Filter: %s%s   |   ',
+            now()->translatedFormat('d F Y, H:i'),
+            $label,
+            $this->cari ? ' · cari "' . $this->cari . '"' : '',
+        );
+
+        $s->setCellValue('A1', 'DATA DIRI PENDAFTAR MAGANG');
+        $s->setCellValue('A2', 'BADAN KEPEGAWAIAN DAN PENGEMBANGAN SUMBER DAYA MANUSIA (BKPSDM) KOTA YOGYAKARTA');
+        $s->setCellValue('A3', '="' . str_replace('"', '""', $teksCetak) . '"&' . $fPendaftar . '&" pendaftar, "&' . $fOrang . '&" orang"');
+
+        $s->getStyle("A1:{$akhir}3")->applyFromArray(['font' => ['bold' => true, 'size' => 12], 'alignment' => $tengah]);
+        $s->getStyle("A1")->getFont()->setSize(14);
+        $s->getStyle("A3:{$akhir}3")->applyFromArray(['font' => ['bold' => false, 'size' => 9]]);
+        $s->getRowDimension(1)->setRowHeight(24);
+        $s->getRowDimension(4)->setRowHeight(8);
+
+        // ---------- Baris total ----------
+        $total = $akhirData + 1;
+        $s->mergeCells("A{$total}:{$akhir}{$total}");
+        $s->setCellValue("A{$total}", '="TOTAL  "&' . $fPendaftar . '&" pendaftar, "&' . $fOrang . '&" orang"');
+        $s->getStyle("A{$total}:{$akhir}{$total}")->applyFromArray([
+            'font'      => ['bold' => true],
+            'alignment' => ['horizontal' => Alignment::HORIZONTAL_LEFT, 'vertical' => Alignment::VERTICAL_CENTER, 'indent' => 1],
+            'borders'   => $garis,
+        ]);
+        $s->getRowDimension($total)->setRowHeight(22);
+
+        // ---------- Lebar kolom, freeze, cetak ----------
+        foreach (self::LEBAR_KOLOM as $kol => $lebar) {
+            $s->getColumnDimension($kol)->setWidth($lebar);
+        }
+
+        // Autofilter sengaja tidak dipasang: sel yang digabung (No & Nomor Pendaftaran) membuat filter Excel berantakan.
+        // Penyaringan dilakukan lewat filter status & kotak cari di halaman Data Pendaftar sebelum mengunduh.
+        $s->freezePane('A' . ($header + 1));
+
+        $s->getPageSetup()
+            ->setOrientation(PageSetup::ORIENTATION_LANDSCAPE)
+            ->setPaperSize(PageSetup::PAPERSIZE_A4)
+            ->setFitToPage(true)
+            ->setFitToWidth(1)
+            ->setFitToHeight(0)
+            ->setRowsToRepeatAtTopByStartAndEnd($header, $header);
+    }
+
+    // ---------------------------------------------------------------- bantu
+
+    /** Perkiraan jumlah baris tampil bila teks dibungkus pada lebar tertentu (karakter). */
+    private function hitungBaris(string $teks, int $lebar): int
+    {
+        $n = 0;
+        foreach (preg_split('/\R/u', $teks) ?: [''] as $paragraf) {
+            $n += max(1, (int) ceil(mb_strlen($paragraf) / $lebar));
+        }
+
+        return $n;
     }
 }
