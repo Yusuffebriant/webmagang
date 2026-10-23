@@ -37,6 +37,7 @@ Route::prefix('admin')->group(function () {
         Route::delete('bidang/{bidang}', [KuotaController::class, 'destroy']);
 
         Route::get('pendaftar/export', [AdminPendaftarController::class, 'export']);
+        Route::get('pendaftar/export-data-diri', [AdminPendaftarController::class, 'exportDataDiri']);
         Route::get('pendaftar', [AdminPendaftarController::class, 'index']);
         Route::get('pendaftar/{pendaftar}', [AdminPendaftarController::class, 'show']);
         Route::patch('pendaftar/{pendaftar}/status', [AdminPendaftarController::class, 'updateStatus']);

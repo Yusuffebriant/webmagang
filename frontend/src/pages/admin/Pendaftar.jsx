@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
-import { getPendaftar, getPendaftarList, ubahStatus, unggahLoa } from '../../api/admin'
+import { getPendaftar, getPendaftarList, ubahStatus, unggahLoa, unduhDataDiriPendaftar } from '../../api/admin'
 import Icon from '../../components/Icon'
 import StatusBadge from '../../components/StatusBadge'
 import SertifikatPanel from '../../components/SertifikatPanel'
@@ -358,6 +358,8 @@ export default function Pendaftar() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')
   const [versi, setVersi] = useState(0)
+  const [mengunduh, setMengunduh] = useState(false)
+  const [pesanUnduh, setPesanUnduh] = useState('')
 
   // setSp dari router berubah identitas tiap URL berubah; lewat ref supaya `ubah` stabil
   // dan efek fetch tidak jalan ulang hanya karena panel detail dibuka/ditutup.
@@ -404,14 +406,41 @@ export default function Pendaftar() {
     return () => ctrl.abort()
   }, [status, q, page, versi, ubah])
 
+  async function unduh() {
+    setMengunduh(true)
+    setPesanUnduh('')
+    try {
+      await unduhDataDiriPendaftar({ status, search: q })
+    } catch {
+      setPesanUnduh('Gagal mengunduh data. Silakan coba lagi.')
+    } finally {
+      setMengunduh(false)
+    }
+  }
+
   const meta = hasil?.meta ?? {}
   const halaman = meta.current_page ?? page
   const terakhir = meta.last_page ?? 1
 
   return (
     <div>
-      <h1 className="text-2xl font-extrabold tracking-tight text-brand-900">Data Pendaftar</h1>
-      <p className="mt-1 text-sm text-slate-500">Periksa data pendaftar, lalu verifikasi, terima, atau tolak.</p>
+      <div className="flex flex-wrap items-end justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-extrabold tracking-tight text-brand-900">Data Pendaftar</h1>
+          <p className="mt-1 text-sm text-slate-500">Periksa data pendaftar, lalu verifikasi, terima, atau tolak.</p>
+        </div>
+        <div className="flex gap-2">
+          <button type="button" onClick={refresh} disabled={loading}
+            className="inline-flex items-center gap-2 rounded-lg border border-slate-300 bg-white px-4 py-2.5 text-sm font-semibold text-brand-900 transition hover:border-brand-500 hover:text-brand-500 disabled:opacity-60">
+            <Icon name="refresh" className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Muat ulang
+          </button>
+          <button type="button" onClick={unduh} disabled={mengunduh}
+            className="inline-flex items-center gap-2 rounded-lg bg-brand-500 px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-brand-600 disabled:opacity-70">
+            <Icon name="download" className="h-4 w-4" /> {mengunduh ? 'Mengunduh...' : 'Unduh Excel'}
+          </button>
+        </div>
+      </div>
+      {pesanUnduh && <p role="alert" className="mt-3 text-sm text-red-600">{pesanUnduh}</p>}
 
       <div className="mt-6 flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
         <div className="-mx-1 flex gap-1.5 overflow-x-auto px-1 pb-1" role="tablist" aria-label="Filter status">
@@ -425,7 +454,7 @@ export default function Pendaftar() {
           ))}
         </div>
         <div className="relative w-full lg:w-72">
-          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari nama, no. pendaftaran, NIM"
+          <input type="search" value={cari} onChange={(e) => setCari(e.target.value)} placeholder="Cari nama, no. pendaftaran, NIM, universitas"
             aria-label="Cari pendaftar"
             className="block w-full rounded-xl border border-slate-300 bg-white py-2.5 pr-4 pl-4 text-sm outline-none focus:border-brand-500 focus:ring-4 focus:ring-brand-500/15" />
         </div>

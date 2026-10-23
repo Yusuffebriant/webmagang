@@ -25,6 +25,7 @@ class StorePendaftarRequest extends FormRequest
             'email'              => ['required', 'email', 'max:150'],
             'universitas'        => ['required', 'string', 'max:150'],
             'fakultas'           => ['nullable', 'string', 'max:150'],
+            'jenjang'            => ['nullable', 'string', 'max:30'],
             'program_studi'      => ['required', 'string', 'max:150'],
             'semester'           => ['required', 'integer', 'min:1', 'max:14'],
             'program_magang_id'  => ['required', 'exists:program_magang,id'],

@@ -7,19 +7,29 @@ export async function getDashboard(signal) {
   return data
 }
 
-// GET /api/admin/pendaftar/export  ->  file .xlsx
-export async function unduhPendaftar() {
-  const res = await api.get('/admin/pendaftar/export', { responseType: 'blob' })
+// Unduh file dari endpoint admin (respons blob) dan simpan lewat browser
+async function unduhBerkas(url, params, namaCadangan) {
+  const res = await api.get(url, { params, responseType: 'blob' })
   const cd = res.headers['content-disposition'] ?? ''
-  const nama = /filename="?([^";]+)"?/i.exec(cd)?.[1] ?? 'data-pendaftar.xlsx'
-  const url = URL.createObjectURL(res.data)
+  const nama = /filename="?([^";]+)"?/i.exec(cd)?.[1] ?? namaCadangan
+  const href = URL.createObjectURL(res.data)
   const a = document.createElement('a')
-  a.href = url
+  a.href = href
   a.download = nama
   document.body.appendChild(a)
   a.click()
   a.remove()
-  URL.revokeObjectURL(url)
+  URL.revokeObjectURL(href)
+}
+
+// GET /api/admin/pendaftar/export  ->  file .xlsx
+export function unduhPendaftar() {
+  return unduhBerkas('/admin/pendaftar/export', undefined, 'data-pendaftar.xlsx')
+}
+
+// GET /api/admin/pendaftar/export-data-diri?status=&search=  ->  file .xlsx (data diri lengkap, ikut filter)
+export function unduhDataDiriPendaftar({ status, search } = {}) {
+  return unduhBerkas('/admin/pendaftar/export-data-diri', { status: status || undefined, search: search || undefined }, 'data-diri-pendaftar.xlsx')
 }
 
 // GET /api/admin/pendaftar?status=&search=&page=  ->  { data: [...], links, meta }  (15 per halaman)
