@@ -7,6 +7,7 @@ import CekStatus from '../pages/public/CekStatus'
 import Login from '../pages/admin/Login'
 import Dashboard from '../pages/admin/Dashboard'
 import Pendaftar from '../pages/admin/Pendaftar'
+import DetailPendaftar from '../pages/admin/DetailPendaftar'
 import Kuota from '../pages/admin/Kuota'
 import PengaturanSertifikat from '../pages/admin/PengaturanSertifikat'
 import AdminLayout from '../layouts/AdminLayout'
@@ -48,6 +49,7 @@ export const router = createBrowserRouter([
         children: [
             { index: true, element: <Dashboard /> },
             { path: 'pendaftar', element: <Pendaftar /> },
+            { path: 'pendaftar/:id', element: <DetailPendaftar /> },
             { path: 'kuota', element: <Kuota /> },
             { path: 'sertifikat', element: <PengaturanSertifikat /> },
         ],
