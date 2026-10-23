@@ -3,10 +3,12 @@
 use App\Http\Controllers\Api\Admin\AuthController;
 use App\Http\Controllers\Api\Admin\DashboardController;
 use App\Http\Controllers\Api\Admin\KuotaController;
+use App\Http\Controllers\Api\Admin\SertifikatController as AdminSertifikatController;
 use App\Http\Controllers\Api\Admin\PendaftarController as AdminPendaftarController;
 use App\Http\Controllers\Api\Public\CekStatusController;
 use App\Http\Controllers\Api\Public\PendaftaranController;
 use App\Http\Controllers\Api\Public\ProgramController;
+use App\Http\Controllers\Api\Public\SertifikatController as PublicSertifikatController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/ping', fn () => response()->json(['status' => 'ok', 'app' => config('app.name')]));
@@ -17,6 +19,7 @@ Route::prefix('public')->group(function () {
     Route::get('bidang', [ProgramController::class, 'bidang']);
     Route::post('pendaftaran', [PendaftaranController::class, 'store'])->middleware('throttle:10,1');
     Route::get('cek-status/{nomor}', [CekStatusController::class, 'show'])->middleware('throttle:20,1');
+    Route::get('sertifikat/{nomor}', [PublicSertifikatController::class, 'show'])->middleware('throttle:10,1');
 });
 
 // Admin
@@ -38,5 +41,12 @@ Route::prefix('admin')->group(function () {
         Route::get('pendaftar/{pendaftar}', [AdminPendaftarController::class, 'show']);
         Route::patch('pendaftar/{pendaftar}/status', [AdminPendaftarController::class, 'updateStatus']);
         Route::post('pendaftar/{pendaftar}/loa', [AdminPendaftarController::class, 'unggahLoa']);
+
+        Route::get('sertifikat/pengaturan', [AdminSertifikatController::class, 'pengaturan']);
+        Route::put('sertifikat/pengaturan', [AdminSertifikatController::class, 'simpanPengaturan']);
+        Route::post('sertifikat/ttd', [AdminSertifikatController::class, 'unggahTtd']);
+        Route::delete('sertifikat/ttd', [AdminSertifikatController::class, 'hapusTtd']);
+        Route::get('pendaftar/{pendaftar}/sertifikat', [AdminSertifikatController::class, 'index']);
+        Route::patch('sertifikat/{sertifikat}', [AdminSertifikatController::class, 'update']);
     });
 });

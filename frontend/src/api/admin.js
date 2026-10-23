@@ -60,6 +60,14 @@ export async function editBidang(id, payload) {
   return data.data ?? data
 }
 
+// Alias untuk Kuota.jsx. Menerima payload objek { nama_bidang, deskripsi, kuota }
+// atau langsung angka kuota (number | null).
+export async function ubahKuota(id, payload) {
+  const body =
+    payload !== null && typeof payload === 'object' ? payload : { kuota: payload }
+  return editBidang(id, body)
+}
+
 // POST /api/admin/bidang  { nama_bidang, deskripsi?, kuota? }  -> bidang baru (status aktif)
 export async function tambahBidang(payload) {
   const { data } = await api.post('/admin/bidang', payload)
@@ -70,4 +78,46 @@ export async function tambahBidang(payload) {
 export async function hapusBidang(id) {
   const { data } = await api.delete(`/admin/bidang/${id}`)
   return data
+}
+
+// ===== Sertifikat =====
+
+// GET /api/admin/pendaftar/{id}/sertifikat -> { pengaturan, sertifikat: [...] }. Hanya untuk status 'diterima';
+// nomor sertifikat dibuat otomatis saat pertama kali dipanggil.
+export async function getSertifikatPendaftar(id) {
+  const { data } = await api.get(`/admin/pendaftar/${id}/sertifikat`)
+  return data.data ?? data
+}
+
+// PATCH /api/admin/sertifikat/{id}  { nomor, nama?, instansi?, periode_mulai?, periode_selesai?, tanggal_terbit? }
+// Field kosong/null = kembali otomatis mengikuti data pendaftar.
+export async function ubahSertifikat(id, payload) {
+  const { data } = await api.patch(`/admin/sertifikat/${id}`, payload)
+  return data.data ?? data
+}
+
+// GET /api/admin/sertifikat/pengaturan -> { data: {...pengaturan}, bawaan: {...} }
+export async function getPengaturanSertifikat(signal) {
+  const { data } = await api.get('/admin/sertifikat/pengaturan', { signal })
+  return data
+}
+
+// PUT /api/admin/sertifikat/pengaturan -> pengaturan terbaru
+export async function simpanPengaturanSertifikat(payload) {
+  const { data } = await api.put('/admin/sertifikat/pengaturan', payload)
+  return data.data ?? data
+}
+
+// POST /api/admin/sertifikat/ttd (multipart: ttd) -> pengaturan terbaru (ttd_pejabat = data URL)
+export async function unggahTtdSertifikat(file) {
+  const form = new FormData()
+  form.append('ttd', file)
+  const { data } = await api.post('/admin/sertifikat/ttd', form)
+  return data.data ?? data
+}
+
+// DELETE /api/admin/sertifikat/ttd -> pengaturan terbaru
+export async function hapusTtdSertifikat() {
+  const { data } = await api.delete('/admin/sertifikat/ttd')
+  return data.data ?? data
 }

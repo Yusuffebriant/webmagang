@@ -3,6 +3,7 @@ import { useSearchParams } from 'react-router-dom'
 import { getPendaftar, getPendaftarList, ubahStatus, unggahLoa } from '../../api/admin'
 import Icon from '../../components/Icon'
 import StatusBadge from '../../components/StatusBadge'
+import SertifikatPanel from '../../components/SertifikatPanel'
 import { STATUS, tanggal, rapikanNama } from '../../lib/status'
 
 const KUNCI = Object.keys(STATUS)
@@ -300,6 +301,7 @@ function Detail({ id, onClose, onBerubah }) {
                       )}
                     </div>
                   )}
+                  {d.status === 'diterima' && <SertifikatPanel pendaftarId={d.id} namaKelompok={d.nama_lengkap} />}
                   <div className="mt-3 flex flex-wrap gap-2">
                     {(AKSI[d.status] ?? []).map((a) => {
                       const nonaktif = a.perluLoa && !d.loa_url

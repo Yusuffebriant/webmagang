@@ -40,6 +40,14 @@ function Sidebar({ admin, onNavigate, onLogout }) {
         >
           <Icon name="briefcase" className="h-5 w-5" /> Kuota Magang
         </NavLink>
+
+        <NavLink
+          to="/admin/sertifikat" onClick={onNavigate}
+          className={({ isActive }) =>
+            `${itemCls} ${isActive ? 'bg-white/10 text-white' : 'hover:bg-white/5 hover:text-white'}`}
+        >
+          <Icon name="cap" className="h-5 w-5" /> Template Sertifikat
+        </NavLink>
       </nav>
 
       <div className="m-3 mb-[max(0.75rem,env(safe-area-inset-bottom))] rounded-xl bg-white/5 p-3.5">
