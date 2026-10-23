@@ -8,6 +8,7 @@ use App\Http\Resources\PendaftarResource;
 use App\Models\Pendaftar;
 use App\Services\NomorPendaftaranService;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 
 class PendaftaranController extends Controller
 {
@@ -28,28 +29,52 @@ class PendaftaranController extends Controller
             $anggota
         );
 
-        $pendaftar = DB::transaction(function () use ($data, $dokumen, $anggota) {
-            $pendaftar = Pendaftar::create([
-                ...$data,
-                'nomor_pendaftaran' => $this->nomorService->generate(),
-                'status'            => 'menunggu_verifikasi',
-            ]);
+        // Path file yang sudah ditulis ke disk. Bila penyimpanan database gagal, semuanya dihapus lagi
+        // supaya tidak ada file yatim.
+        $tersimpan = [];
 
-            if ($anggota) {
-                $pendaftar->anggota()->createMany($anggota);
-            }
+        try {
+            $pendaftar = DB::transaction(function () use ($data, $dokumen, $anggota, &$tersimpan) {
+                $simpan = function ($file, string $folder) use (&$tersimpan) {
+                    return $tersimpan[] = $file->store($folder, 'public');
+                };
 
-            foreach ($dokumen as $item) {
-                $path = $item['file']->store('dokumen-pendaftar', 'public');
+                // Foto diri ketua & anggota: simpan file, lalu ganti isinya dengan path-nya.
+                $data['foto'] = $simpan($data['foto'], 'foto-pendaftar');
+                $anggota = array_map(function ($a) use ($simpan) {
+                    $a['foto'] = $simpan($a['foto'], 'foto-pendaftar');
 
-                $pendaftar->dokumen()->create([
-                    'jenis_dokumen' => $item['jenis_dokumen'],
-                    'file'          => $path,
+                    return $a;
+                }, $anggota);
+
+                $pendaftar = Pendaftar::create([
+                    ...$data,
+                    'nomor_pendaftaran' => $this->nomorService->generate(),
+                    'status'            => 'menunggu_verifikasi',
                 ]);
+
+                if ($anggota) {
+                    $pendaftar->anggota()->createMany($anggota);
+                }
+
+                foreach ($dokumen as $item) {
+                    $path = $simpan($item['file'], 'dokumen-pendaftar');
+
+                    $pendaftar->dokumen()->create([
+                        'jenis_dokumen' => $item['jenis_dokumen'],
+                        'file'          => $path,
+                    ]);
+                }
+
+                return $pendaftar;
+            });
+        } catch (\Throwable $e) {
+            if ($tersimpan) {
+                Storage::disk('public')->delete($tersimpan);
             }
 
-            return $pendaftar;
-        });
+            throw $e;
+        }
 
         return response()->json([
             'message' => 'Pendaftaran berhasil dikirim.',

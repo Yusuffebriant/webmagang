@@ -35,14 +35,14 @@ function sectionTop(el) {
   return top - SECTION_OFFSET
 }
 
-const base = 'rounded-full px-3 py-2 text-sm font-medium whitespace-nowrap transition-colors'
+const base = 'rounded-full px-2.5 py-2 text-[0.8125rem] font-medium whitespace-nowrap transition-colors xl:px-3 xl:text-sm'
 const idle = 'text-slate-300 hover:text-white'
 const active = 'bg-white/10 text-white'
 
 // Navbar kapsul melayang: menempel di atas layar, kaca gelap transparan.
 // Saat halaman sedang di-scroll (naik/turun) navbar bergeser keluar ke atas layar;
 // berhenti scroll -> turun kembali ke posisi normal.
-// Empat menu cukup panjang, jadi menu lengkap baru tampil mulai layar xl; di bawahnya memakai tombol menu.
+// Menu lengkap tampil mulai lebar 900px (ukuran tulisan sedikit lebih kecil di bawah 1280px agar muat); di bawahnya memakai tombol menu.
 export default function Navbar() {
   const [open, setOpen] = useState(false)
   // Status scroll sengaja TIDAK disimpan di state React: setiap event scroll akan me-render ulang seluruh Navbar.
@@ -117,11 +117,11 @@ export default function Navbar() {
       <div
         ref={barRef}
         data-open={open}
-        className={`mx-auto flex h-14 max-w-6xl items-center justify-between gap-4 rounded-full border border-white/10 py-2 pr-2 pl-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-[transform,background-color] duration-300 ease-out bg-brand-900/60 data-[open=true]:bg-brand-900/90 data-[scrolled=true]:bg-brand-900/90`}
+        className={`mx-auto flex h-14 max-w-6xl items-center justify-between gap-3 rounded-full border border-white/10 py-2 pr-2 pl-5 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl transition-[transform,background-color] duration-300 ease-out xl:gap-4 bg-brand-900/60 data-[open=true]:bg-brand-900/90 data-[scrolled=true]:bg-brand-900/90`}
       >
         <Link to="/" aria-label="Beranda BKPSDM" className="shrink-0"><Logo light compact /></Link>
 
-        <nav className="hidden items-center gap-1 xl:flex" aria-label="Menu utama">
+        <nav className="hidden items-center gap-0.5 min-[900px]:flex xl:gap-1" aria-label="Menu utama">
           {navbarLinks.map((l) =>
             l.to ? (
               <NavLink key={l.label} to={l.to} end={l.end}
@@ -135,19 +135,19 @@ export default function Navbar() {
         </nav>
 
         <Link to={tujuanAdmin}
-          className="hidden shrink-0 items-center gap-2 rounded-full bg-white px-5 py-2.5 text-sm font-semibold text-brand-900 transition hover:bg-brand-100 xl:inline-flex">
+          className="hidden shrink-0 items-center gap-2 rounded-full bg-white px-4 py-2 text-[0.8125rem] font-semibold text-brand-900 transition hover:bg-brand-100 min-[900px]:inline-flex xl:px-5 xl:py-2.5 xl:text-sm">
           <Icon name="user" className="h-4 w-4" /> {labelAdmin}
         </Link>
 
         <button type="button" onClick={() => setOpen((v) => !v)}
-          className="tap-44 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 xl:hidden"
+          className="tap-44 flex h-10 w-10 items-center justify-center rounded-full bg-white/10 text-white transition hover:bg-white/20 min-[900px]:hidden"
           aria-label="Buka menu" aria-expanded={open}>
           <Icon name={open ? 'close' : 'menu'} className="h-5 w-5" />
         </button>
       </div>
 
       {open && (
-        <nav className="mx-auto mt-2 max-h-[calc(100dvh-6rem)] max-w-6xl overflow-y-auto rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl xl:hidden" aria-label="Menu seluler">
+        <nav className="mx-auto mt-2 max-h-[calc(100dvh-6rem)] max-w-6xl overflow-y-auto rounded-3xl border border-white/10 bg-brand-900/90 p-2 shadow-[0_8px_30px_rgba(0,0,0,0.25)] backdrop-blur-xl min-[900px]:hidden" aria-label="Menu seluler">
           {navbarLinks.map((l) => (
             <Link key={l.label} to={l.href ?? l.to} onClick={() => setOpen(false)}
               className="block rounded-2xl px-4 py-3 text-sm font-medium text-slate-200 transition hover:bg-white/10 hover:text-white">

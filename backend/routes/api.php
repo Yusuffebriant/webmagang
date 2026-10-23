@@ -40,6 +40,9 @@ Route::prefix('admin')->group(function () {
         Route::get('pendaftar/export-data-diri', [AdminPendaftarController::class, 'exportDataDiri']);
         Route::get('pendaftar', [AdminPendaftarController::class, 'index']);
         Route::get('pendaftar/{pendaftar}', [AdminPendaftarController::class, 'show']);
+        Route::patch('pendaftar/{pendaftar}', [AdminPendaftarController::class, 'update']);
+        Route::post('pendaftar/{pendaftar}/foto', [AdminPendaftarController::class, 'unggahFoto']);
+        Route::put('pendaftar/{pendaftar}/hasil', [AdminPendaftarController::class, 'updateHasil']);
         Route::patch('pendaftar/{pendaftar}/status', [AdminPendaftarController::class, 'updateStatus']);
         Route::post('pendaftar/{pendaftar}/loa', [AdminPendaftarController::class, 'unggahLoa']);
 
