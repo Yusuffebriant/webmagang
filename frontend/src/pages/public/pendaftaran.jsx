@@ -557,8 +557,16 @@ export default function Pendaftaran() {
       : a)))
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
-  const toggleBidang = (id) =>
-    setBidangIds((arr) => (arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]))
+  // Hanya boleh memilih satu: salah satu formasi ATAU "Lainnya"
+  const pilihBidang = (id) => {
+    setBidangIds([id])
+    setLainnya(false)
+    setLainnyaTeks('')
+  }
+  const pilihLainnya = () => {
+    setLainnya(true)
+    setBidangIds([])
+  }
 
   const pilihFile = (key) => (e) => {
     const file = e.target.files?.[0]
@@ -586,7 +594,7 @@ export default function Pendaftaran() {
     // Validasi sisi klien (backend tetap memvalidasi ulang)
     const lokal = {}
     if (!bidangIds.length && !(lainnya && lainnyaTeks.trim())) {
-      lokal.bidang = ['Pilih minimal 1 formasi magang atau isi "Lainnya".']
+      lokal.bidang = ['Pilih 1 formasi magang atau isi "Lainnya".']
     }
     if (!files.surat_pengantar) lokal.surat_pengantar = ['Surat pengantar dari universitas wajib diunggah.']
     Object.assign(lokal, cekOrang(form))
@@ -867,7 +875,7 @@ export default function Pendaftaran() {
                   </div>
                 </Field>
 
-                <Field label="Minat Formasi Magang" anchor="bidang" error={err('bidang')} hint="Pilih minimal 1, boleh lebih.">
+                <Field label="Minat Formasi Magang" anchor="bidang" error={err('bidang')} hint="Pilih salah satu.">
                   {formasiMemuat && <p className="text-sm text-slate-500">Memuat daftar formasi…</p>}
 
                   {formasiGagal && (
@@ -890,7 +898,7 @@ export default function Pendaftaran() {
                       return (
                         <label key={f.id} aria-disabled={terkunci}
                           className={`flex items-start gap-3 rounded-lg border px-3.5 py-3 text-sm transition ${terkunci ? 'cursor-not-allowed border-slate-200 bg-slate-50' : aktif ? 'cursor-pointer border-brand-500 bg-brand-50' : 'cursor-pointer border-slate-300 bg-white hover:border-brand-200'}`}>
-                          <input type="checkbox" checked={aktif} disabled={terkunci} onChange={() => toggleBidang(f.id)}
+                          <input type="radio" name="minat_formasi" checked={aktif} disabled={terkunci} onChange={() => pilihBidang(f.id)}
                             className="mt-0.5 h-4 w-4 shrink-0 accent-brand-500 disabled:cursor-not-allowed" />
                           <div className="min-w-0 flex-1">
                             <div className="flex items-start justify-between gap-2">
@@ -922,7 +930,7 @@ export default function Pendaftaran() {
 
                   <div className={`mt-2.5 rounded-lg border px-3.5 py-3 transition ${lainnya ? 'border-brand-500 bg-brand-50' : 'border-slate-300 bg-white hover:border-brand-200'}`}>
                     <label className="flex cursor-pointer items-center gap-3 text-sm text-slate-700">
-                      <input type="checkbox" checked={lainnya} onChange={(e) => setLainnya(e.target.checked)} className="h-4 w-4 shrink-0 accent-brand-500" />
+                      <input type="radio" name="minat_formasi" checked={lainnya} onChange={pilihLainnya} className="h-4 w-4 shrink-0 accent-brand-500" />
                       Lainnya
                     </label>
                     {lainnya && (

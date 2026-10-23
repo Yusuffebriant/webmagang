@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api\Admin;
 
 use App\Enums\StatusPendaftar;
 use App\Exports\DaftarMagangExport;
+use App\Exports\DataDiriPendaftarExport;
 use App\Http\Controllers\Controller;
 use App\Http\Resources\PendaftarResource;
 use App\Models\BidangMagang;
@@ -28,7 +29,8 @@ class PendaftarController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('nama_lengkap', 'like', "%{$search}%")
                   ->orWhere('nomor_pendaftaran', 'like', "%{$search}%")
-                  ->orWhere('nim', 'like', "%{$search}%");
+                  ->orWhere('nim', 'like', "%{$search}%")
+                  ->orWhere('universitas', 'like', "%{$search}%");
             });
         }
 
@@ -277,5 +279,19 @@ class PendaftarController extends Controller
     public function export()
     {
         return Excel::download(new DaftarMagangExport, 'daftar-magang-' . now()->format('Ymd-His') . '.xlsx');
+    }
+
+    // Unduhan dari halaman Data Pendaftar: data diri lengkap (ketua + anggota), mengikuti filter status & pencarian.
+    public function exportDataDiri(Request $request)
+    {
+        $status = in_array($request->query('status'), array_column(StatusPendaftar::cases(), 'value'), true)
+            ? $request->query('status')
+            : null;
+        $cari = trim((string) $request->query('search', '')) ?: null;
+
+        return Excel::download(
+            new DataDiriPendaftarExport($status, $cari),
+            'data-diri-pendaftar-' . now()->format('Ymd-His') . '.xlsx',
+        );
     }
 }
