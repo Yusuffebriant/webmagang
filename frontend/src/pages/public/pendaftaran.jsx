@@ -4,6 +4,7 @@ import api from '../../api/client'
 import Icon, { CheckCircle } from '../../components/Icon'
 import { FooterBody } from '../../components/Footer'
 import { Container, PageHero, Reveal, Slide, SlideStack, Sticker } from '../../components/Motif'
+import FotoDiri from '../../components/FotoDiri'
 import useRuangFooter from '../../hooks/useRuangFooter'
 import { unduhBuktiPendaftaran } from '../../utils/buktiPendaftaran'
 import { statusKuota } from '../../utils/kuota'
@@ -24,6 +25,7 @@ const DOKUMEN = [
 ]
 
 const MAKS_ANGGOTA = 9 // anggota di luar ketua
+const MAKS_KEAHLIAN = 500 // sama dengan validasi backend
 
 // Durasi magang dihitung otomatis dari periode mulai & selesai (tidak diisi manual).
 // Hasil: "3 bulan", "2 bulan 10 hari", "6 minggu 2 hari", atau "5 hari". null bila tanggal belum lengkap / tidak valid.
@@ -51,15 +53,17 @@ function hitungDurasi(mulai, selesai) {
 }
 
 const anggotaKosong = () => ({
-  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '', jenjang: '',
+  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', alamat_universitas: '', fakultas: '', program_studi: '', jenjang: '',
   tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '', alamat: '', no_whatsapp: '', email: '',
   bidang_magang_id: '', // kosong = sama dengan bidang ketua
+  keahlian: '', foto: null,
 })
 
 const awal = {
-  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', fakultas: '', program_studi: '',
+  nama_lengkap: '', nim: '', nik: '', semester: '', universitas: '', alamat_universitas: '', fakultas: '', program_studi: '',
   jenjang: '', tempat_lahir: '', tanggal_lahir: '', jenis_kelamin: '',
   alamat: '', no_whatsapp: '', email: '',
+  keahlian: '', foto: null,
   periode_mulai: '', periode_selesai: '',
 }
 
@@ -93,6 +97,7 @@ function cekOrang(d, awalan = '') {
     salah('jenjang', 'Pilih jenjang pendidikan.')
   } else {
     wajib('universitas')
+    wajib('alamat_universitas')
     wajib('program_studi')
     if (d.jenjang !== 'SMA/SMK') wajib('fakultas')
   }
@@ -102,6 +107,8 @@ function cekOrang(d, awalan = '') {
   wajib('alamat')
   if (wajib('no_whatsapp') && !/^[0-9]{9,15}$/.test(isi('no_whatsapp'))) salah('no_whatsapp', 'Nomor HP harus 9-15 digit angka.')
   if (wajib('email') && !FORMAT_EMAIL.test(isi('email'))) salah('email', 'Format email tidak valid.')
+  if (!d.foto) salah('foto', 'Foto diri wajib diunggah.')
+  if (wajib('keahlian') && isi('keahlian').length > MAKS_KEAHLIAN) salah('keahlian', `Keahlian maksimal ${MAKS_KEAHLIAN} karakter.`)
   return e
 }
 
@@ -227,6 +234,17 @@ function Field({ label, error, hint, required = true, children, htmlFor, anchor 
   )
 }
 
+// Keterangan keahlian (teks bebas, maks. 500 karakter) dengan penghitung karakter.
+function KeahlianField({ id, value, onChange, error }) {
+  return (
+    <Field label="Keahlian" htmlFor={id} error={error}
+      hint="Tuliskan keahlian yang Anda kuasai, pisahkan dengan koma. Contoh: Microsoft Office, desain grafis (Canva), administrasi perkantoran.">
+      <TextareaOtomatis id={id} placeholder="Contoh: Microsoft Word & Excel, desain grafis (Canva), pengarsipan, public speaking" rows={3} className={inputCls} value={value} onChange={(e) => onChange(e.target.value)} required maxLength={MAKS_KEAHLIAN} />
+      <p className="mt-1 text-right text-[0.72rem] text-slate-400 tabular-nums">{String(value ?? '').length}/{MAKS_KEAHLIAN}</p>
+    </Field>
+  )
+}
+
 // Jenjang (dropdown) + kolom institusi yang menyesuaikan:
 // SMA/SMK -> Nama Sekolah & Jurusan; selain itu -> Universitas, Fakultas, Program Studi.
 function PendidikanFields({ data, ubah, idp, err }) {
@@ -259,6 +277,13 @@ function PendidikanFields({ data, ubah, idp, err }) {
           <Field label="Program Studi" htmlFor={`${idp}program_studi`} error={err('program_studi')}>{teks('program_studi')}</Field>
         </div>
       ))}
+
+      {data.jenjang && (
+        <Field label={sekolah ? 'Alamat Sekolah' : 'Alamat Universitas'} htmlFor={`${idp}alamat_universitas`} error={err('alamat_universitas')}>
+          <TextareaOtomatis id={`${idp}alamat_universitas`} rows={2} className={inputCls} value={data.alamat_universitas} onChange={(e) => ubah('alamat_universitas', e.target.value)} required maxLength={500}
+            placeholder={sekolah ? 'Contoh: Jl. Kenari No. 10, Kel. Muja Muju, Kec. Umbulharjo, Kota Yogyakarta' : 'Contoh: Jl. Babarsari No. 2, Kel. Caturtunggal, Kec. Depok, Kab. Sleman, DI Yogyakarta'} />
+        </Field>
+      )}
     </>
   )
 }
@@ -283,6 +308,10 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
       </div>
 
       <div className="space-y-4">
+        <Field label="Foto Diri" anchor={id('foto')} error={k('foto')} hint="Foto formal, wajah terlihat jelas. JPG atau PNG, maksimal 2MB.">
+          <FotoDiri id={id('foto')} value={data.foto} onChange={(f) => ubah(i, 'foto', f)} />
+        </Field>
+
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Nama Lengkap" htmlFor={id('nama_lengkap')} error={k('nama_lengkap')}>
             <input id={id('nama_lengkap')} placeholder="Contoh: Rina Wulandari" className={inputCls} value={data.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
@@ -321,7 +350,7 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
         <div className="flex flex-wrap items-center justify-between gap-2 border-t border-slate-100 pt-4">
           <p className="text-sm font-semibold text-brand-900">Data Pendidikan</p>
           <button type="button" onClick={() => salinKampus(i)} disabled={!bisaSalin}
-            title={bisaSalin ? 'Isi jenjang, kampus, fakultas, dan prodi sama seperti ketua' : 'Lengkapi data pendidikan ketua terlebih dahulu'}
+            title={bisaSalin ? 'Isi jenjang, kampus, alamat kampus, fakultas, dan prodi sama seperti ketua' : 'Lengkapi data pendidikan ketua terlebih dahulu'}
             className="rounded-lg border border-brand-200 bg-brand-50 px-3 py-1.5 text-xs font-semibold text-brand-600 transition hover:border-brand-500 hover:bg-brand-100 disabled:cursor-not-allowed disabled:opacity-50">
             Samakan dengan ketua
           </button>
@@ -360,6 +389,8 @@ function Anggota({ i, data, ubah, hapus, salinKampus, bisaSalin, formasi, bidang
             <input id={id('email')} placeholder="Contoh: rina.wulandari@email.com" type="email" className={inputCls} value={data.email} onChange={set('email')} required maxLength={150} />
           </Field>
         </div>
+
+        <KeahlianField id={id('keahlian')} value={data.keahlian} onChange={(v) => ubah(i, 'keahlian', v)} error={k('keahlian')} />
       </div>
     </div>
   )
@@ -373,11 +404,12 @@ const tebakJenjang = (p) => p.jenjang || (p.fakultas === '-' ? 'SMA/SMK' : 'S1')
 
 const orangDariPrefill = (p) => ({
   nama_lengkap: teksAman(p.nama_lengkap), nim: teksAman(p.nim), nik: teksAman(p.nik), semester: teksAman(p.semester),
-  universitas: teksAman(p.universitas), fakultas: p.fakultas === '-' ? '' : teksAman(p.fakultas),
+  universitas: teksAman(p.universitas), alamat_universitas: teksAman(p.alamat_universitas), fakultas: p.fakultas === '-' ? '' : teksAman(p.fakultas),
   program_studi: teksAman(p.program_studi), jenjang: tebakJenjang(p),
   tempat_lahir: teksAman(p.tempat_lahir), tanggal_lahir: teksAman(p.tanggal_lahir).slice(0, 10),
   jenis_kelamin: teksAman(p.jenis_kelamin), alamat: teksAman(p.alamat),
   no_whatsapp: teksAman(p.no_whatsapp).replace(/\D/g, ''), email: teksAman(p.email),
+  keahlian: teksAman(p.keahlian), foto: null, // foto harus diunggah ulang
 })
 
 function formDariPrefill(p) {
@@ -441,7 +473,7 @@ export default function Pendaftaran() {
   }, [cobaSetuju])
 
   const langkahDasar = [
-    { tema: 'pribadi', label: anggota.length > 0 ? 'Data Ketua' : 'Data Pribadi', ket: 'Identitas dan pendidikan' },
+    { tema: 'pribadi', label: anggota.length > 0 ? 'Data Ketua' : 'Data Pribadi', ket: 'Identitas, foto, dan pendidikan' },
     { tema: 'magang', label: 'Data Magang', ket: 'Periode dan formasi' },
     { tema: 'anggota', label: 'Anggota Kelompok', ket: 'Opsional' },
     { tema: 'dokumen', label: 'Dokumen', ket: 'Unggah berkas pendukung' },
@@ -521,7 +553,7 @@ export default function Pendaftaran() {
   const hapusAnggota = (i) => setAnggota((arr) => arr.filter((_, n) => n !== i))
   const salinKampus = (i) =>
     setAnggota((arr) => arr.map((a, n) => (n === i
-      ? { ...a, universitas: form.universitas, fakultas: form.fakultas, program_studi: form.program_studi, jenjang: form.jenjang }
+      ? { ...a, universitas: form.universitas, alamat_universitas: form.alamat_universitas, fakultas: form.fakultas, program_studi: form.program_studi, jenjang: form.jenjang }
       : a)))
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }))
 
@@ -585,7 +617,8 @@ export default function Pendaftaran() {
 
     const fd = new FormData()
     const urutanDokumen = []
-    Object.entries(form).forEach(([k, v]) => fd.append(k, v))
+    Object.entries(form).forEach(([k, v]) => { if (k !== 'foto') fd.append(k, v) })
+    fd.append('foto', form.foto)
     fd.append('durasi', durasi) // otomatis dari periode
     if (form.jenjang === 'SMA/SMK') fd.set('fakultas', '-') // tidak dipakai untuk sekolah
     bidangIds.forEach((id) => fd.append('bidang_magang_ids[]', id))
@@ -606,7 +639,8 @@ export default function Pendaftaran() {
     // Tanpa anggota = mendaftar sendiri (individu); ada anggota = kelompok.
     fd.append('tipe_pendaftaran', anggota.length > 0 ? 'kelompok' : 'individu')
     anggota.forEach((a, i) => {
-      Object.entries(a).forEach(([k, v]) => fd.append(`anggota[${i}][${k}]`, v))
+      Object.entries(a).forEach(([k, v]) => { if (k !== 'foto') fd.append(`anggota[${i}][${k}]`, v) })
+      fd.append(`anggota[${i}][foto]`, a.foto)
       if (a.jenjang === 'SMA/SMK') fd.set(`anggota[${i}][fakultas]`, '-')
     })
 
@@ -735,7 +769,7 @@ export default function Pendaftaran() {
                     </div>
                   )}
                   <p className="mt-3 text-xs text-amber-800/80">
-                    Dokumen tidak bisa terisi otomatis, jadi unggah ulang semua berkas (terutama yang dicatat di atas).
+                    Dokumen dan foto diri tidak bisa terisi otomatis, jadi unggah ulang semua berkas dan foto (terutama yang dicatat di atas).
                     Periksa juga jenjang pendidikan dan periode magang.
                   </p>
                   {prefill.periode_mulai && String(prefill.periode_mulai).slice(0, 10) < HARI_INI && (
@@ -753,6 +787,9 @@ export default function Pendaftaran() {
 
               {/* DATA PRIBADI */}
               <Section judul={anggota.length > 0 ? 'Data Ketua Kelompok' : 'Data Pribadi'} icon="user" tema="pribadi">
+                <Field label="Foto Diri" anchor="foto" error={err('foto')} hint="Foto formal, wajah terlihat jelas. JPG atau PNG, maksimal 2MB.">
+                  <FotoDiri id="foto" value={form.foto} onChange={(f) => setForm((x) => ({ ...x, foto: f }))} />
+                </Field>
                 <Field label="Nama Lengkap" htmlFor="nama_lengkap" error={err('nama_lengkap')}>
                   <input id="nama_lengkap" placeholder="Contoh: Amanda Zahra" className={inputCls} value={form.nama_lengkap} onChange={set('nama_lengkap')} required maxLength={150} />
                 </Field>
@@ -807,6 +844,8 @@ export default function Pendaftaran() {
                     <input id="email" placeholder="Contoh: amanda.zahra@email.com" type="email" className={inputCls} value={form.email} onChange={set('email')} required maxLength={150} />
                   </Field>
                 </div>
+
+                <KeahlianField id="keahlian" value={form.keahlian} onChange={(v) => setForm((x) => ({ ...x, keahlian: v }))} error={err('keahlian')} />
               </Section>
 
               {/* B. DATA MAGANG */}

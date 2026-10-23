@@ -21,7 +21,14 @@ class PendaftarResource extends JsonResource
             'alamat'            => $this->alamat,
             'no_whatsapp'       => $this->no_whatsapp,
             'email'             => $this->email,
+            'keahlian'          => $this->keahlian,
+            // Foto diri hanya dikirim ke admin yang login (data pribadi), seperti loa_url.
+            'foto_url'          => $this->when(
+                $request->user('sanctum') && filled($this->foto),
+                fn () => asset('storage/' . $this->foto)
+            ),
             'universitas'       => $this->universitas,
+            'alamat_universitas' => $this->alamat_universitas,
             'fakultas'          => $this->fakultas,
             'program_studi'     => $this->program_studi,
             'semester'          => $this->semester,
@@ -39,6 +46,9 @@ class PendaftarResource extends JsonResource
                 $request->user('sanctum') && filled($this->loa_file),
                 fn () => asset('storage/' . $this->loa_file)
             ),
+            // Hasil magang: data penilaian, hanya untuk admin yang login (tidak tampil di Cek Status publik).
+            'nilai_akhir'       => $this->when($request->user('sanctum'), fn () => $this->nilai_akhir),
+            'hasil_magang'      => $this->when($request->user('sanctum'), fn () => $this->hasil_magang),
             'dokumen'           => DokumenPendaftarResource::collection($this->whenLoaded('dokumen')),
             'jumlah_anggota'    => $this->whenCounted('anggota'),
             'anggota'           => $this->whenLoaded('anggota', fn () => $this->anggota->map(fn ($a) => [
@@ -52,11 +62,16 @@ class PendaftarResource extends JsonResource
                 'alamat'           => $a->alamat,
                 'no_whatsapp'      => $a->no_whatsapp,
                 'email'            => $a->email,
+                'keahlian'         => $a->keahlian,
+                'foto_url'         => ($request->user('sanctum') && filled($a->foto)) ? asset('storage/' . $a->foto) : null,
                 'universitas'      => $a->universitas,
+                'alamat_universitas' => $a->alamat_universitas,
                 'fakultas'         => $a->fakultas,
                 'program_studi'    => $a->program_studi,
                 'semester'         => $a->semester,
                 'jenjang'          => $a->jenjang,
+                'nilai_akhir'      => $request->user('sanctum') ? $a->nilai_akhir : null,
+                'hasil_magang'     => $request->user('sanctum') ? $a->hasil_magang : null,
                 'bidang_magang_id' => $a->bidang_magang_id,
                 'bidang'           => $a->bidang?->nama_bidang,
             ])->values()),

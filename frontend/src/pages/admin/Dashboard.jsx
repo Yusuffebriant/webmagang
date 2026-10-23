@@ -219,7 +219,7 @@ export default function Dashboard() {
                         <tr key={p.id} className="hover:bg-slate-50">
                           <td className="px-5 py-3.5 font-mono text-xs text-slate-600 sm:px-6">{p.nomor_pendaftaran}</td>
                           <td className="px-3 py-3.5 font-semibold">
-                            <Link to={`/admin/pendaftar?buka=${p.id}`} className="text-brand-900 hover:text-brand-500 hover:underline">{p.nama_lengkap}</Link>
+                            <Link to={`/admin/pendaftar/${p.id}`} className="text-brand-900 hover:text-brand-500 hover:underline">{p.nama_lengkap}</Link>
                           </td>
                           <td className="px-3 py-3.5"><StatusBadge status={p.status} /></td>
                           <td className="px-5 py-3.5 whitespace-nowrap text-slate-500 sm:px-6">{waktu(p.created_at)}</td>

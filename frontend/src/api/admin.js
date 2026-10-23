@@ -48,6 +48,28 @@ export async function unggahLoa(id, file) {
   return data.data ?? data
 }
 
+// PATCH /api/admin/pendaftar/{id}  (data diri + pendidikan ketua, periode, dan anggota[{id,...}]) -> detail terbaru
+export async function ubahDataPendaftar(id, payload) {
+  const { data } = await api.patch(`/admin/pendaftar/${id}`, payload)
+  return data.data ?? data
+}
+
+// PUT /api/admin/pendaftar/{id}/hasil  { nilai_akhir, hasil_magang, anggota: [{id, nilai_akhir, hasil_magang}] }
+// Hanya untuk status 'diterima'. -> detail terbaru
+export async function simpanHasilMagang(id, payload) {
+  const { data } = await api.put(`/admin/pendaftar/${id}/hasil`, payload)
+  return data.data ?? data
+}
+
+// POST /api/admin/pendaftar/{id}/foto  (multipart: foto, anggota_id?) -> detail terbaru. Tambah/ganti foto ketua atau anggota.
+export async function unggahFotoPendaftar(id, file, anggotaId) {
+  const form = new FormData()
+  form.append('foto', file)
+  if (anggotaId) form.append('anggota_id', anggotaId)
+  const { data } = await api.post(`/admin/pendaftar/${id}/foto`, form)
+  return data.data ?? data
+}
+
 // GET /api/admin/kuota -> [{ id, nama_bidang, deskripsi|null, status, kuota|null, terisi, sisa|null, total_pendaftar }]
 export async function getKuota(signal) {
   const { data } = await api.get('/admin/kuota', { signal })
